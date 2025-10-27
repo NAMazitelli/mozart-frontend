@@ -66,7 +66,7 @@ const Settings: React.FC = () => {
               <IonLabel>Select Language</IonLabel>
               <IonSelect
                 value={language}
-                onSelectionChange={(e) => setLanguage(e.detail.value)}
+                onIonChange={(e: CustomEvent) => setLanguage(e.detail.value)}
               >
                 {languages.map((lang) => (
                   <IonSelectOption key={lang.value} value={lang.value}>

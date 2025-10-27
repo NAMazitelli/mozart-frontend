@@ -212,7 +212,7 @@ const DifficultySelection: React.FC = () => {
                       </div>
 
                       <p className="difficulty-description">
-                        {level.descriptions[exerciseType]}
+                        {level.descriptions[exerciseType as keyof typeof level.descriptions]}
                       </p>
                     </IonCardContent>
                   </IonCard>

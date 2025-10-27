@@ -21,7 +21,10 @@ import {
   IonProgressBar,
   IonBadge,
   IonRange,
-  IonItem
+  IonItem,
+  IonSegment,
+  IonSegmentButton,
+  IonLabel
 } from '@ionic/react';
 import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, headset } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
@@ -278,7 +281,7 @@ const PanningExercise: React.FC = () => {
             </div>
             <IonSegment
               value={difficulty}
-              onIonChange={(e) => handleDifficultyChange(e.detail.value as 'easy' | 'medium' | 'hard')}
+              onIonChange={(e: CustomEvent) => handleDifficultyChange(e.detail.value as 'easy' | 'medium' | 'hard')}
             >
               <IonSegmentButton value="easy">
                 <IonLabel>
