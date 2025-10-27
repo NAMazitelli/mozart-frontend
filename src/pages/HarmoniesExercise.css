@@ -1,0 +1,396 @@
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  text-align: center;
+}
+
+.progress-info {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.progress-info p {
+  margin: 8px 0;
+  font-weight: 500;
+  color: var(--ion-color-medium);
+}
+
+.question-card {
+  margin-bottom: 16px;
+}
+
+.chord-info {
+  margin-bottom: 16px;
+}
+
+.chord-info p {
+  margin: 4px 0;
+}
+
+.difficulty-description {
+  color: var(--ion-color-medium);
+  font-size: 0.9em;
+}
+
+.audio-controls {
+  text-align: center;
+  margin: 16px 0;
+}
+
+.play-button {
+  margin-bottom: 12px;
+  --padding-start: 24px;
+  --padding-end: 24px;
+}
+
+.audio-hint {
+  margin: 8px 0;
+  font-size: 0.9em;
+  color: var(--ion-color-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.selection-card {
+  margin-bottom: 16px;
+}
+
+.selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.selection-header h3 {
+  margin: 0;
+  color: var(--ion-color-primary);
+}
+
+.selection-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.selection-display {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-selection {
+  color: var(--ion-color-medium);
+  font-style: italic;
+  margin: 0;
+}
+
+.note-selection {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+}
+
+.selected-note {
+  padding: 4px 8px;
+  background: var(--ion-color-primary-tint);
+  border-radius: 6px;
+  margin: 0 2px;
+}
+
+.piano-card {
+  margin-bottom: 16px;
+}
+
+.piano-card h3 {
+  margin: 0 0 8px 0;
+  color: var(--ion-color-primary);
+  text-align: center;
+}
+
+.piano-instruction {
+  text-align: center;
+  margin: 0 0 16px 0;
+  font-size: 0.9em;
+  color: var(--ion-color-medium);
+}
+
+.piano-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.piano-keyboard {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  height: 120px;
+  display: flex;
+}
+
+.piano-key {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  border-radius: 0 0 6px 6px;
+}
+
+.white-key {
+  flex: 1;
+  background: linear-gradient(to bottom, #ffffff 0%, #f8f8f8 100%);
+  border: 1px solid #ccc;
+  border-top: none;
+  height: 120px;
+  z-index: 1;
+}
+
+.white-key:hover {
+  background: linear-gradient(to bottom, #f0f0f0 0%, #e8e8e8 100%);
+}
+
+.white-key.selected {
+  background: linear-gradient(to bottom, #2196F3 0%, #1976D2 100%);
+  border-color: #1565C0;
+}
+
+.white-key.correct {
+  background: linear-gradient(to bottom, #4CAF50 0%, #45a049 100%);
+  border-color: #2E7D32;
+}
+
+.white-key.wrong {
+  background: linear-gradient(to bottom, #f44336 0%, #d32f2f 100%);
+  border-color: #B71C1C;
+}
+
+.white-key.missed {
+  background: linear-gradient(to bottom, #FF9800 0%, #F57C00 100%);
+  border-color: #E65100;
+  animation: missedPulse 1s ease-in-out;
+}
+
+.black-key {
+  position: absolute;
+  width: 8.33%;
+  height: 80px;
+  background: linear-gradient(to bottom, #333 0%, #000 100%);
+  border: 1px solid #000;
+  border-radius: 0 0 4px 4px;
+  z-index: 2;
+}
+
+.black-key:hover {
+  background: linear-gradient(to bottom, #555 0%, #222 100%);
+}
+
+.black-key.selected {
+  background: linear-gradient(to bottom, #2196F3 0%, #0D47A1 100%);
+  border-color: #1565C0;
+}
+
+.black-key.correct {
+  background: linear-gradient(to bottom, #4CAF50 0%, #2E7D32 100%);
+  border-color: #1B5E20;
+}
+
+.black-key.wrong {
+  background: linear-gradient(to bottom, #f44336 0%, #B71C1C 100%);
+  border-color: #B71C1C;
+}
+
+.black-key.missed {
+  background: linear-gradient(to bottom, #FF9800 0%, #E65100 100%);
+  border-color: #BF360C;
+  animation: missedPulse 1s ease-in-out;
+}
+
+@keyframes missedPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.key-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.black-key .key-label {
+  color: #fff;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.white-key.selected .key-label,
+.white-key.correct .key-label,
+.white-key.wrong .key-label,
+.white-key.missed .key-label,
+.black-key.selected .key-label,
+.black-key.correct .key-label,
+.black-key.wrong .key-label,
+.black-key.missed .key-label {
+  color: #fff;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.piano-legend {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 0.9em;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+}
+
+.legend-color.correct {
+  background: var(--ion-color-success);
+}
+
+.legend-color.wrong {
+  background: var(--ion-color-danger);
+}
+
+.legend-color.missed {
+  background: var(--ion-color-warning);
+}
+
+.submit-button {
+  margin: 16px 0;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+}
+
+.result-card {
+  margin: 16px 0;
+  border-radius: 12px;
+}
+
+.result-card.correct {
+  --background: var(--ion-color-success-tint);
+  border: 2px solid var(--ion-color-success);
+}
+
+.result-card.incorrect {
+  --background: var(--ion-color-danger-tint);
+  border: 2px solid var(--ion-color-danger);
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.result-header h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.result-header p {
+  margin: 4px 0 0 0;
+  font-size: 0.9em;
+  color: var(--ion-color-medium);
+}
+
+.extra-notes {
+  color: var(--ion-color-warning);
+  font-weight: 500;
+}
+
+.explanation {
+  font-style: italic;
+  color: var(--ion-color-medium);
+  margin-top: 8px;
+}
+
+.next-button {
+  margin: 16px 0;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .piano-keyboard {
+    max-width: 100%;
+    height: 100px;
+  }
+
+  .white-key {
+    height: 100px;
+  }
+
+  .black-key {
+    height: 65px;
+  }
+
+  .key-label {
+    font-size: 10px;
+  }
+
+  .selection-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .selection-buttons {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .note-selection {
+    font-size: 1em;
+  }
+
+  .piano-legend {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .white-key {
+    background: linear-gradient(to bottom, #2a2a2a 0%, #1a1a1a 100%);
+    border-color: #555;
+  }
+
+  .white-key:hover {
+    background: linear-gradient(to bottom, #3a3a3a 0%, #2a2a2a 100%);
+  }
+
+  .key-label {
+    color: #ccc;
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+  }
+
+  .legend-color {
+    border-color: #555;
+  }
+}

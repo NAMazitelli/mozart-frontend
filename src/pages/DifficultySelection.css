@@ -1,0 +1,184 @@
+.exercise-info-card {
+  margin-bottom: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.exercise-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.exercise-icon {
+  font-size: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: var(--ion-color-primary-tint);
+  border-radius: 50%;
+}
+
+.exercise-header ion-card-title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--ion-color-primary);
+}
+
+.exercise-description {
+  margin: 4px 0 0 0;
+  color: var(--ion-color-medium);
+  font-size: 1rem;
+}
+
+.difficulty-section {
+  margin-bottom: 24px;
+}
+
+.difficulty-section h2 {
+  text-align: center;
+  color: var(--ion-color-primary);
+  margin-bottom: 24px;
+  font-size: 1.3rem;
+}
+
+.difficulty-card {
+  border-radius: 16px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.difficulty-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.difficulty-easy {
+  border-left: 4px solid var(--ion-color-success);
+}
+
+.difficulty-easy:hover {
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+}
+
+.difficulty-medium {
+  border-left: 4px solid var(--ion-color-warning);
+}
+
+.difficulty-medium:hover {
+  box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+}
+
+.difficulty-hard {
+  border-left: 4px solid var(--ion-color-danger);
+}
+
+.difficulty-hard:hover {
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+}
+
+.difficulty-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.difficulty-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.difficulty-icon {
+  min-width: 40px;
+}
+
+.difficulty-info h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.points-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.select-button {
+  --color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+.difficulty-description {
+  margin: 0;
+  color: var(--ion-color-medium);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.tips-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: var(--ion-color-light);
+}
+
+.tips-card h3 {
+  margin: 0 0 16px 0;
+  color: var(--ion-color-primary);
+  font-size: 1.1rem;
+}
+
+.tips-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tips-card li {
+  margin-bottom: 8px;
+  color: var(--ion-color-dark);
+  line-height: 1.5;
+}
+
+.tips-card li strong {
+  color: var(--ion-color-primary);
+}
+
+/* Responsive design */
+@media (min-width: 768px) {
+  .exercise-info-card,
+  .difficulty-card,
+  .tips-card {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 24px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .exercise-info-card,
+  .difficulty-card,
+  .tips-card {
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+  }
+
+  .exercise-icon {
+    background: var(--ion-color-primary-shade);
+  }
+
+  .tips-card {
+    background: var(--ion-color-dark-tint);
+  }
+}
+
+/* Animation for card selection */
+.difficulty-card:active {
+  transform: translateY(-2px);
+  transition: transform 0.1s ease;
+}

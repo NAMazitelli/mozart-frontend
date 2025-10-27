@@ -1,0 +1,67 @@
+.category-item {
+  --border-radius: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  margin: 8px 0;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.category-item:hover {
+  transform: translateY(-2px);
+  --background: var(--ion-color-light);
+}
+
+.category-item ion-label h2 {
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  margin-bottom: 4px;
+}
+
+.category-item ion-label p {
+  color: var(--ion-color-medium);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.category-item ion-badge {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* Available exercises styling */
+.category-item[data-category="notes"],
+.category-item[data-category="panning"],
+.category-item[data-category="volumes"],
+.category-item[data-category="equalizing"],
+.category-item[data-category="intervals"],
+.category-item[data-category="harmonies"] {
+  /* Remove green background - use default styling */
+}
+
+.category-item[data-category="notes"]:hover,
+.category-item[data-category="panning"]:hover,
+.category-item[data-category="volumes"]:hover,
+.category-item[data-category="equalizing"]:hover,
+.category-item[data-category="intervals"]:hover,
+.category-item[data-category="harmonies"]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Coming soon styling */
+.category-item[data-category="scales"],
+.category-item[data-category="rhythms"],
+.category-item[data-category="reading_notes"],
+.category-item[data-category="partitures"] {
+  opacity: 0.7;
+}
+
+.category-item[data-category="scales"] ion-badge,
+.category-item[data-category="rhythms"] ion-badge,
+.category-item[data-category="reading_notes"] ion-badge,
+.category-item[data-category="partitures"] ion-badge {
+  --color: var(--ion-color-medium);
+  --background: var(--ion-color-light-shade);
+}

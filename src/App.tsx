@@ -1,19 +1,22 @@
 import { Redirect, Route } from 'react-router-dom';
 import {
   IonApp,
-  IonIcon,
-  IonLabel,
   IonRouterOutlet,
-  IonTabBar,
-  IonTabButton,
-  IonTabs,
   setupIonicReact
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { ellipse, square, triangle } from 'ionicons/icons';
-import Tab1 from './pages/Tab1';
-import Tab2 from './pages/Tab2';
-import Tab3 from './pages/Tab3';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import MainMenu from './pages/MainMenu';
+import CategorySelect from './pages/CategorySelect';
+import Settings from './pages/Settings';
+import DifficultySelection from './pages/DifficultySelection';
+import GuessNoteExercise from './pages/GuessNoteExercise';
+import PanningExercise from './pages/PanningExercise';
+import VolumeExercise from './pages/VolumeExercise';
+import EqualizingExercise from './pages/EqualizingExercise';
+import IntervalsExercise from './pages/IntervalsExercise';
+import HarmoniesExercise from './pages/HarmoniesExercise';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -47,41 +50,59 @@ import './theme/variables.css';
 
 setupIonicReact();
 
-const App: React.FC = () => (
-  <IonApp>
-    <IonReactRouter>
-      <IonTabs>
+const AppRoutes: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <IonApp>
+      <IonReactRouter>
         <IonRouterOutlet>
-          <Route exact path="/tab1">
-            <Tab1 />
+          <Route exact path="/login">
+            <Login />
           </Route>
-          <Route exact path="/tab2">
-            <Tab2 />
+          <Route exact path="/main">
+            {isAuthenticated ? <MainMenu /> : <Redirect to="/login" />}
           </Route>
-          <Route path="/tab3">
-            <Tab3 />
+          <Route exact path="/category/:categoryId">
+            {isAuthenticated ? <CategorySelect /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/settings">
+            {isAuthenticated ? <Settings /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/difficulty/:exerciseType">
+            {isAuthenticated ? <DifficultySelection /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/exercise/guess-note/:difficulty">
+            {isAuthenticated ? <GuessNoteExercise /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/exercise/panning/:difficulty">
+            {isAuthenticated ? <PanningExercise /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/exercise/volumes/:difficulty">
+            {isAuthenticated ? <VolumeExercise /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/exercise/equalizing/:difficulty">
+            {isAuthenticated ? <EqualizingExercise /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/exercise/intervals/:difficulty">
+            {isAuthenticated ? <IntervalsExercise /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/exercise/harmonies/:difficulty">
+            {isAuthenticated ? <HarmoniesExercise /> : <Redirect to="/login" />}
           </Route>
           <Route exact path="/">
-            <Redirect to="/tab1" />
+            <Redirect to={isAuthenticated ? "/main" : "/login"} />
           </Route>
         </IonRouterOutlet>
-        <IonTabBar slot="bottom">
-          <IonTabButton tab="tab1" href="/tab1">
-            <IonIcon aria-hidden="true" icon={triangle} />
-            <IonLabel>Tab 1</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="tab2" href="/tab2">
-            <IonIcon aria-hidden="true" icon={ellipse} />
-            <IonLabel>Tab 2</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="tab3" href="/tab3">
-            <IonIcon aria-hidden="true" icon={square} />
-            <IonLabel>Tab 3</IonLabel>
-          </IonTabButton>
-        </IonTabBar>
-      </IonTabs>
-    </IonReactRouter>
-  </IonApp>
+      </IonReactRouter>
+    </IonApp>
+  );
+};
+
+const App: React.FC = () => (
+  <AuthProvider>
+    <AppRoutes />
+  </AuthProvider>
 );
 
 export default App;
