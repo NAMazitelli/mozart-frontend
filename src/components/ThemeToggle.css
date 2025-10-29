@@ -1,0 +1,65 @@
+.theme-toggle-item {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-end: 8px;
+}
+
+.theme-icon {
+  font-size: 1.2rem;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  margin: 0 8px;
+}
+
+.theme-icon.active {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.theme-toggle {
+  margin: 0 8px;
+  --background: var(--ion-color-medium);
+  --background-checked: var(--ion-color-primary);
+  --handle-background: var(--ion-color-light);
+  --handle-background-checked: var(--ion-color-light);
+}
+
+/* Light theme specific styling */
+.light-theme .theme-icon {
+  color: var(--ion-color-medium-shade);
+}
+
+.light-theme .theme-icon.active {
+  color: var(--ion-color-warning);
+}
+
+/* Dark theme specific styling */
+.dark-theme .theme-icon {
+  color: var(--ion-color-medium-tint);
+}
+
+.dark-theme .theme-icon.active {
+  color: var(--ion-color-secondary);
+}
+
+/* Smooth transitions for theme changes */
+.theme-toggle-item {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .theme-toggle-item {
+    --padding-start: 12px;
+    --padding-end: 12px;
+  }
+
+  .theme-icon {
+    font-size: 1.1rem;
+    margin: 0 6px;
+  }
+
+  .theme-toggle {
+    margin: 0 6px;
+  }
+}

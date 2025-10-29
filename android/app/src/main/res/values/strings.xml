@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mozart Music Learning</string>
+    <string name="title_activity_main">Mozart Music Learning</string>
+    <string name="package_name">com.mozart.musiclearning</string>
+    <string name="custom_url_scheme">com.mozart.musiclearning</string>
+</resources>

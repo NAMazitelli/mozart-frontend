@@ -1,0 +1,369 @@
+/* Login Page Styles */
+.login-content {
+  --background: #fff;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+/* Header with Illustration */
+.login-header {
+  padding: 40px 20px 60px 20px;
+  text-align: center;
+  position: relative;
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+}
+
+.login-illustration {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Main Content */
+.login-main {
+  background: white;
+  padding: 30px 24px 40px 24px;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  margin-top: -4px;
+  position: relative;
+  z-index: 10;
+  min-height: calc(100vh - 300px);
+}
+
+/* Title Section */
+.title-section {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.main-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2C3E50;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #7F8C8D;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Form Styles */
+.login-form {
+  margin-bottom: 24px;
+}
+
+.input-group {
+  margin-bottom: 16px;
+}
+
+.input-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2C3E50;
+  margin-bottom: 8px;
+}
+
+.custom-input {
+  --background: #F8F9FA;
+  --color: #2C3E50;
+  --placeholder-color: #BDC3C7;
+  --border-radius: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 14px;
+  --padding-bottom: 14px;
+  --min-height: 50px;
+  border: 1px solid #E9ECEF;
+  font-size: 16px;
+}
+
+.custom-input.ion-focused {
+  --border-color: #4A90E2;
+  --box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+}
+
+/* Password Input */
+.password-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 16px;
+  z-index: 100;
+  font-size: 20px;
+  color: #BDC3C7;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: #4A90E2;
+}
+
+/* Forgot Password */
+.forgot-password {
+  text-align: right;
+  margin-bottom: 24px;
+}
+
+.forgot-password ion-text {
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Gender Selection */
+.gender-selection {
+  margin-bottom: 24px;
+}
+
+.gender-buttons {
+  flex-direction: row;
+  display: flex;
+  gap: 12px;
+}
+
+.gender-btn {
+  flex: 1;
+  padding: 14px 20px;
+  border: 2px solid #E9ECEF;
+  border-radius: 12px;
+  background: white;
+  color: #7F8C8D;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gender-btn.active {
+  border-color: #4A90E2;
+  background: #4A90E2;
+  color: white;
+}
+
+.gender-btn:not(.active):hover {
+  border-color: #4A90E2;
+  color: #4A90E2;
+}
+
+/* Submit Button */
+.submit-button {
+  --background: #4A90E2;
+  --background-activated: #3A7BC8;
+  --background-hover: #5BA3F5;
+  --color: white;
+  --border-radius: 12px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 24px 0;
+  text-transform: none;
+}
+
+/* Social Section */
+.social-section {
+  text-align: center;
+  margin: 32px 0;
+}
+
+.social-text {
+  font-size: 14px;
+  color: #7F8C8D;
+  margin: 0 0 16px 0;
+}
+
+.social-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.social-btn {
+  --color: #7F8C8D;
+  --background: transparent;
+  --border-radius: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  font-size: 24px;
+}
+
+.social-btn:hover {
+  --color: #4A90E2;
+}
+
+/* Toggle Section */
+.toggle-section {
+  text-align: center;
+  margin: 24px 0;
+}
+
+.toggle-section ion-text {
+  font-size: 14px;
+  color: #7F8C8D;
+}
+
+.toggle-link {
+  color: #4A90E2;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.toggle-link:hover {
+  text-decoration: underline;
+}
+
+/* Privacy Section */
+.privacy-section {
+  text-align: center;
+  margin-top: 24px;
+  padding: 0 16px;
+}
+
+.privacy-text {
+  font-size: 12px;
+  color: #95A5A6;
+  line-height: 1.4;
+}
+
+.privacy-link {
+  color: #4A90E2;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.privacy-link:hover {
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .login-header {
+    padding: 0;
+  }
+
+  .login-illustration {
+    width: 100%;
+  }
+
+  .login-main {
+    padding: 24px 20px 32px 20px;
+  }
+
+  .main-title {
+    font-size: 22px;
+  }
+
+  .subtitle {
+    font-size: 15px;
+  }
+
+  .social-buttons {
+    gap: 12px;
+  }
+}
+
+/* Force Light Theme as Default */
+.login-content {
+  color-scheme: light;
+}
+
+.login-main {
+  background: white;
+  color: #2C3E50;
+}
+
+.main-title {
+  color: #2C3E50;
+}
+
+.subtitle {
+  color: #7F8C8D;
+}
+
+.input-label {
+  color: #2C3E50;
+}
+
+.custom-input {
+  --background: #F8F9FA;
+  --color: #2C3E50;
+  --placeholder-color: #BDC3C7;
+  border-color: #E9ECEF;
+}
+
+.gender-btn {
+  background: white;
+  border-color: #E9ECEF;
+  color: #7F8C8D;
+}
+
+.social-text {
+  color: #7F8C8D;
+}
+
+.toggle-section ion-text {
+  color: #7F8C8D;
+}
+
+.privacy-text {
+  color: #95A5A6;
+}
+
+/* Optional Dark Mode Override (only when explicitly requested) */
+[data-theme="dark"] .login-main {
+  background: #1E1E1E;
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .main-title {
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .subtitle {
+  color: #CCCCCC;
+}
+
+[data-theme="dark"] .input-label {
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .custom-input {
+  --background: #2A2A2A;
+  --color: #FFFFFF;
+  --placeholder-color: #888888;
+  border-color: #404040;
+}
+
+[data-theme="dark"] .gender-btn {
+  background: #2A2A2A;
+  border-color: #404040;
+  color: #CCCCCC;
+}
+
+[data-theme="dark"] .social-text {
+  color: #CCCCCC;
+}
+
+[data-theme="dark"] .toggle-section ion-text {
+  color: #CCCCCC;
+}
+
+[data-theme="dark"] .privacy-text {
+  color: #888888;
+}

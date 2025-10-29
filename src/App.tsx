@@ -6,6 +6,9 @@ import {
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import React, { useState, useEffect } from 'react';
+import LoadingScreen from './components/LoadingScreen';
 import Login from './pages/Login';
 import MainMenu from './pages/MainMenu';
 import CategorySelect from './pages/CategorySelect';
@@ -42,8 +45,8 @@ import '@ionic/react/css/display.css';
  */
 
 /* import '@ionic/react/css/palettes/dark.always.css'; */
-/* import '@ionic/react/css/palettes/dark.class.css'; */
-import '@ionic/react/css/palettes/dark.system.css';
+import '@ionic/react/css/palettes/dark.class.css';
+/* import '@ionic/react/css/palettes/dark.system.css'; */
 
 /* Theme variables */
 import './theme/variables.css';
@@ -52,6 +55,21 @@ setupIonicReact();
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Show loading screen for 2 seconds
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading screen while loading
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <IonApp>
@@ -100,9 +118,11 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => (
-  <AuthProvider>
-    <AppRoutes />
-  </AuthProvider>
+  <ThemeProvider>
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
+  </ThemeProvider>
 );
 
 export default App;

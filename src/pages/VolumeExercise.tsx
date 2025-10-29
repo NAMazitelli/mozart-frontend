@@ -14,7 +14,6 @@ import {
   IonRow,
   IonCol,
   IonIcon,
-  IonToast,
   IonSpinner,
   IonBackButton,
   IonButtons,
@@ -28,6 +27,7 @@ import {
 } from '@ionic/react';
 import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, musicalNote } from 'ionicons/icons';
 import { volumeService } from '../services/api';
+import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
 import './VolumeExercise.css';
 
 interface VolumeExercise {
@@ -56,8 +56,8 @@ const VolumeExercise: React.FC = () => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(true);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
@@ -110,8 +110,8 @@ const VolumeExercise: React.FC = () => {
       setQuestionCount(prev => prev + 1);
     } catch (error) {
       console.error('Error loading exercise:', error);
-      setToastMessage('Failed to load exercise. Please try again.');
-      setShowToast(true);
+      setModalMessage('Failed to load exercise. Please try again.');
+      setShowModal(true);
     } finally {
       setLoading(false);
     }
@@ -198,21 +198,25 @@ const VolumeExercise: React.FC = () => {
 
       setIsCorrect(response.isCorrect);
       setAccuracy(response.accuracy);
-      setToastMessage(response.message);
-      setShowToast(true);
+      setModalMessage(response.message);
+      setShowModal(true);
 
       if (response.isCorrect) {
         setScore(prev => prev + exercise.points);
       }
     } catch (error) {
       console.error('Error validating answer:', error);
-      setToastMessage('Error validating answer. Please try again.');
-      setShowToast(true);
+      setModalMessage('Error validating answer. Please try again.');
+      setShowModal(true);
     }
   };
 
   const handleNextQuestion = () => {
     loadNewExercise();
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
   };
 
   const handleDifficultyChange = (newDifficulty: 'easy' | 'medium' | 'hard') => {
@@ -405,45 +409,20 @@ const VolumeExercise: React.FC = () => {
         )}
 
         {/* Results */}
-        {isAnswered && (
-          <IonCard className={`result-card ${isCorrect ? 'correct' : 'incorrect'}`}>
-            <IonCardContent>
-              <div className="result-header">
-                <IonIcon
-                  icon={isCorrect ? checkmarkCircle : closeCircle}
-                  color={isCorrect ? 'success' : 'danger'}
-                  size="large"
-                />
-                <div>
-                  <h3>{isCorrect ? 'Correct!' : 'Not quite right'}</h3>
-                  {isCorrect && <p>Accuracy: {accuracy}%</p>}
-                </div>
-              </div>
-              <p><strong>Your guess:</strong> {formatVolumeValue(userVolumeDifference)}</p>
-              <p><strong>Correct answer:</strong> {formatVolumeValue(exercise.volumeDifference)}</p>
-              <p className="explanation">{exercise.volumeDescription}</p>
-            </IonCardContent>
-          </IonCard>
-        )}
 
-        {/* Next question button */}
-        {isAnswered && (
-          <IonButton
-            expand="block"
-            onClick={handleNextQuestion}
-            className="next-button"
-          >
-            Next Question
-          </IonButton>
-        )}
-
-        {/* Toast for feedback */}
-        <IonToast
-          isOpen={showToast}
-          onDidDismiss={() => setShowToast(false)}
-          message={toastMessage}
-          duration={3000}
-          color={isCorrect ? "success" : "warning"}
+        {/* Exercise Completion Modal */}
+        <ExerciseCompletionModal
+          isOpen={showModal}
+          onClose={handleModalClose}
+          onNext={handleNextQuestion}
+          isCorrect={isCorrect}
+          message={modalMessage}
+          score={score}
+          pointsEarned={exercise?.points}
+          correctAnswer={`${exercise?.note?.displayName} (${exercise?.volumeDifference > 0 ? '+' : ''}${exercise?.volumeDifference}dB difference)`}
+          showNextButton={isAnswered}
+          userGuess={formatVolumeValue(userVolumeDifference)}
+          accuracy={accuracy}
         />
       </IonContent>
     </IonPage>

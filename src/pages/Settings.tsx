@@ -18,12 +18,17 @@ import {
   IonBackButton,
   IonButton,
   IonToast,
+  IonIcon,
 } from '@ionic/react';
+import { logOut } from 'ionicons/icons';
 import { useAuth } from '../context/AuthContext';
+import { useHistory } from 'react-router-dom';
 import { userApi } from '../services/api';
+import ThemeToggle from '../components/ThemeToggle';
 
 const Settings: React.FC = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const history = useHistory();
   const [language, setLanguage] = useState(user?.language || 'en');
   const [volume, setVolume] = useState(100);
   const [showToast, setShowToast] = useState(false);
@@ -42,6 +47,18 @@ const Settings: React.FC = () => {
       setShowToast(true);
     } catch (error) {
       setToastMessage('Failed to save settings');
+      setShowToast(true);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      history.push('/login');
+      setToastMessage('Logged out successfully!');
+      setShowToast(true);
+    } catch (error) {
+      setToastMessage('Failed to logout');
       setShowToast(true);
     }
   };
@@ -75,6 +92,15 @@ const Settings: React.FC = () => {
                 ))}
               </IonSelect>
             </IonItem>
+          </IonCardContent>
+        </IonCard>
+
+        <IonCard>
+          <IonCardHeader>
+            <IonCardTitle>Appearance</IonCardTitle>
+          </IonCardHeader>
+          <IonCardContent>
+            <ThemeToggle />
           </IonCardContent>
         </IonCard>
 
@@ -119,6 +145,17 @@ const Settings: React.FC = () => {
                 <p>{user?.email}</p>
               </IonLabel>
             </IonItem>
+
+            <IonButton
+              expand="block"
+              fill="outline"
+              color="danger"
+              onClick={handleLogout}
+              style={{ marginTop: '16px' }}
+            >
+              <IonIcon icon={logOut} slot="start" />
+              Logout
+            </IonButton>
           </IonCardContent>
         </IonCard>
 

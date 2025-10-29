@@ -11,7 +11,6 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonIcon,
-  IonToast,
   IonSpinner,
   IonBackButton,
   IonButtons,
@@ -21,6 +20,7 @@ import {
 import { playOutline, checkmarkCircle, closeCircle, refresh, musicalNote } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
 import { intervalsService } from '../services/api';
+import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
 import './IntervalsExercise.css';
 
 interface PianoNote {
@@ -51,8 +51,8 @@ const IntervalsExercise: React.FC = () => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(true);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [accuracy, setAccuracy] = useState<number>(0);
@@ -99,8 +99,8 @@ const IntervalsExercise: React.FC = () => {
       setQuestionCount(prev => prev + 1);
     } catch (error) {
       console.error('Error loading exercise:', error);
-      setToastMessage('Failed to load exercise. Please try again.');
-      setShowToast(true);
+      setModalMessage('Failed to load exercise. Please try again.');
+      setShowModal(true);
     } finally {
       setLoading(false);
     }
@@ -193,21 +193,25 @@ const IntervalsExercise: React.FC = () => {
       setValidationResponse(response);
       setIsCorrect(response.isCorrect);
       setAccuracy(response.accuracy);
-      setToastMessage(response.message);
-      setShowToast(true);
+      setModalMessage(response.message);
+      setShowModal(true);
 
       if (response.isCorrect) {
         setScore(prev => prev + exercise.points);
       }
     } catch (error) {
       console.error('Error validating answer:', error);
-      setToastMessage('Error validating answer. Please try again.');
-      setShowToast(true);
+      setModalMessage('Error validating answer. Please try again.');
+      setShowModal(true);
     }
   };
 
   const handleNextQuestion = () => {
     loadNewExercise();
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
   };
 
   const renderPianoKey = (note: PianoNote, index: number) => {
@@ -385,44 +389,21 @@ const IntervalsExercise: React.FC = () => {
           </IonButton>
         )}
 
-        {/* Results */}
-        {isAnswered && validationResponse && (
-          <IonCard className={`result-card ${isCorrect ? 'correct' : 'incorrect'}`}>
-            <IonCardContent>
-              <div className="result-header">
-                <IonIcon
-                  icon={isCorrect ? checkmarkCircle : closeCircle}
-                  color={isCorrect ? 'success' : 'danger'}
-                  size="large"
-                />
-                <div>
-                  <h3>{isCorrect ? 'Correct!' : 'Not quite right'}</h3>
-                  <p>Accuracy: {accuracy}% ({validationResponse.correctCount}/{validationResponse.totalNotes} notes correct)</p>
-                </div>
-              </div>
-              <p className="explanation">{validationResponse.explanation}</p>
-            </IonCardContent>
-          </IonCard>
-        )}
 
-        {/* Next question button */}
-        {isAnswered && (
-          <IonButton
-            expand="block"
-            onClick={handleNextQuestion}
-            className="next-button"
-          >
-            Next Question
-          </IonButton>
-        )}
-
-        {/* Toast for feedback */}
-        <IonToast
-          isOpen={showToast}
-          onDidDismiss={() => setShowToast(false)}
-          message={toastMessage}
-          duration={3000}
-          color={isCorrect ? "success" : "warning"}
+        {/* Exercise Completion Modal */}
+        <ExerciseCompletionModal
+          isOpen={showModal}
+          onClose={handleModalClose}
+          onNext={handleNextQuestion}
+          isCorrect={isCorrect}
+          message={modalMessage}
+          score={score}
+          pointsEarned={exercise?.points}
+          correctAnswer={exercise?.sequence?.map(note => note.displayName).join(', ') || 'Not available'}
+          showNextButton={isAnswered}
+          userGuess={userSequence.join(', ')}
+          accuracy={accuracy}
+          validationDetails={validationResponse}
         />
       </IonContent>
     </IonPage>

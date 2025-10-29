@@ -222,18 +222,6 @@ const DifficultySelection: React.FC = () => {
           </IonGrid>
         </div>
 
-        {/* Tips */}
-        <IonCard className="tips-card">
-          <IonCardContent>
-            <h3>💡 Tips for Success</h3>
-            <ul>
-              <li><strong>Start with Easy:</strong> Build your foundation with basic exercises</li>
-              <li><strong>Use Headphones:</strong> Better audio quality improves learning</li>
-              <li><strong>Practice Regularly:</strong> Consistent practice develops your musical ear</li>
-              <li><strong>Don't Rush:</strong> Take time to really listen before answering</li>
-            </ul>
-          </IonCardContent>
-        </IonCard>
       </IonContent>
     </IonPage>
   );
