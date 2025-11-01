@@ -20,6 +20,8 @@ import VolumeExercise from './pages/VolumeExercise';
 import EqualizingExercise from './pages/EqualizingExercise';
 import IntervalsExercise from './pages/IntervalsExercise';
 import HarmoniesExercise from './pages/HarmoniesExercise';
+import Leaderboard from './pages/Leaderboard';
+import OAuthSuccess from './pages/OAuthSuccess';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -78,6 +80,9 @@ const AppRoutes: React.FC = () => {
           <Route exact path="/login">
             <Login />
           </Route>
+          <Route exact path="/auth/success">
+            <OAuthSuccess />
+          </Route>
           <Route exact path="/main">
             {isAuthenticated ? <MainMenu /> : <Redirect to="/login" />}
           </Route>
@@ -86,6 +91,9 @@ const AppRoutes: React.FC = () => {
           </Route>
           <Route exact path="/settings">
             {isAuthenticated ? <Settings /> : <Redirect to="/login" />}
+          </Route>
+          <Route exact path="/leaderboard">
+            {isAuthenticated ? <Leaderboard /> : <Redirect to="/login" />}
           </Route>
           <Route exact path="/difficulty/:exerciseType">
             {isAuthenticated ? <DifficultySelection /> : <Redirect to="/login" />}

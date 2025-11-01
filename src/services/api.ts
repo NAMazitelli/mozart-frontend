@@ -23,10 +23,27 @@ export interface User {
   id: number;
   email: string;
   username: string;
-  coins: number;
+  fullName?: string;
+  age?: number;
+  gender?: string;
+  profilePictureUrl?: string;
+  totalScore: number;
   currentStreak: number;
   longestStreak: number;
+  totalExercisesCompleted: number;
   language: string;
+  lastActivity?: string;
+  createdAt?: string;
+  preferences?: UserPreferences;
+}
+
+export interface UserPreferences {
+  theme: 'light' | 'dark';
+  masterVolume: number;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  soundEffects?: boolean;
+  vibration?: boolean;
 }
 
 export interface AuthResponse {
@@ -51,19 +68,105 @@ export interface Category {
   description: string;
 }
 
+export interface SocialLoginData {
+  provider: 'google' | 'facebook';
+  providerUserId: string;
+  providerEmail?: string;
+  userData?: {
+    name?: string;
+    picture?: string;
+  };
+}
+
 export const authApi = {
   login: (email: string, password: string) =>
     api.post<AuthResponse>('/auth/login', { email, password }),
-  
-  register: (email: string, password: string, username: string) =>
-    api.post<AuthResponse>('/auth/register', { email, password, username }),
+
+  register: (email: string, password: string, username: string, fullName?: string) =>
+    api.post<AuthResponse>('/auth/register', { email, password, username, fullName }),
+
+  // Social login (direct API call for mobile apps)
+  socialLogin: (data: SocialLoginData) =>
+    api.post<AuthResponse>('/auth/social-login', data),
+
+  // OAuth URLs for web redirects
+  getGoogleAuthUrl: () => `${API_BASE_URL}/auth/google`,
+  getFacebookAuthUrl: () => `${API_BASE_URL}/auth/facebook`,
+
+  logout: () => api.post('/auth/logout'),
 };
+
+export interface UserScore {
+  category: string;
+  difficulty: string;
+  high_score: number;
+  attempts_count: number;
+  best_time?: number;
+  last_attempted: string;
+  avg_accuracy: number;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  full_name?: string;
+  total_score: number;
+  longest_streak: number;
+  total_attempts: number;
+  total_correct: number;
+  success_rate: number;
+  average_accuracy: number;
+}
+
+export interface ExerciseLeaderboardEntry extends LeaderboardEntry {
+  exercise_type: string;
+  difficulty: string;
+}
+
+export interface SocialAccount {
+  provider: 'google' | 'facebook';
+  provider_email?: string;
+  provider_data: any;
+  created_at: string;
+  updated_at: string;
+}
 
 export const userApi = {
   getProfile: () => api.get<User>('/user/profile'),
-  updateProfile: (data: { username?: string; language?: string }) =>
-    api.put('/user/update', data),
-  getScores: () => api.get('/user/scores'),
+  updateProfile: (data: {
+    username?: string;
+    fullName?: string;
+    age?: number;
+    gender?: string;
+    language?: string;
+    profilePictureUrl?: string;
+  }) => api.put('/user/profile', data),
+  updatePreferences: (data: Partial<UserPreferences>) =>
+    api.put('/user/preferences', data),
+  getScores: () => api.get<UserScore[]>('/user/scores'),
+
+  // Leaderboard endpoints
+  getGlobalLeaderboard: (limit: number = 50, offset: number = 0) =>
+    api.get<LeaderboardEntry[]>(`/user/leaderboard/global?limit=${limit}&offset=${offset}`),
+  getExerciseLeaderboard: (exerciseType: string, difficulty?: string, limit: number = 50, offset: number = 0) => {
+    const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString() });
+    if (difficulty) params.append('difficulty', difficulty);
+    return api.get<ExerciseLeaderboardEntry[]>(`/user/leaderboard/exercise/${exerciseType}?${params}`);
+  },
+  getLeaderboardPosition: (type: 'global' | 'exercise', exerciseType?: string, difficulty?: string) => {
+    const params = new URLSearchParams({ type });
+    if (exerciseType) params.append('exerciseType', exerciseType);
+    if (difficulty) params.append('difficulty', difficulty);
+    return api.get<{ rank: number | null; type: string; exerciseType?: string; difficulty?: string }>(`/user/leaderboard/position?${params}`);
+  },
+  getFriendsLeaderboard: () =>
+    api.get<LeaderboardEntry[]>('/user/leaderboard/friends'),
+
+  // Social accounts management
+  getSocialAccounts: () =>
+    api.get<{ socialAccounts: SocialAccount[] }>('/auth/social-accounts'),
+  disconnectSocialAccount: (provider: 'google' | 'facebook') =>
+    api.delete(`/auth/social-accounts/${provider}`),
 };
 
 export interface GuessNoteExercise {
@@ -137,11 +240,33 @@ export interface PanningValidationResponse {
   explanation: string;
 }
 
+export interface ExerciseSubmissionData {
+  exerciseCategory: string;
+  difficulty: string;
+  isCorrect: boolean;
+  userAnswer?: any;
+  correctAnswer?: any;
+  accuracy?: number;
+  timeTaken?: number;
+  exerciseData?: any;
+}
+
+export interface ExerciseSubmissionResponse {
+  message: string;
+  attemptId: number;
+  pointsEarned: number;
+  isCorrect: boolean;
+  userStats: {
+    totalScore: number;
+    currentStreak: number;
+    longestStreak: number;
+    totalExercisesCompleted: number;
+  };
+}
+
 export const exerciseService = {
   getGuessNoteExercise: async (difficulty: string = 'easy'): Promise<GuessNoteExercise> => {
-    const response = await api.get<GuessNoteExercise>('/exercise/guess-note', {
-      params: { difficulty }
-    });
+    const response = await api.get<GuessNoteExercise>(`/exercise/guess-note/${difficulty}`);
     return response.data;
   },
 
@@ -150,7 +275,12 @@ export const exerciseService = {
     selectedAnswerIndex: number;
     correctAnswerIndex: number;
   }): Promise<GuessNoteValidationResponse> => {
-    const response = await api.post<GuessNoteValidationResponse>('/exercise/guess-note/validate', data);
+    const response = await api.post<GuessNoteValidationResponse>('/exercise/validate/guess-note', data);
+    return response.data;
+  },
+
+  submitExercise: async (data: ExerciseSubmissionData): Promise<ExerciseSubmissionResponse> => {
+    const response = await api.post<ExerciseSubmissionResponse>('/exercise/submit', data);
     return response.data;
   },
 };
@@ -186,38 +316,34 @@ export interface VolumeValidationResponse {
 
 export const panningService = {
   getPanningExercise: async (difficulty: string = 'easy'): Promise<PanningExercise> => {
-    const response = await api.get<PanningExercise>('/exercise/panning', {
-      params: { difficulty }
-    });
+    const response = await api.get<PanningExercise>(`/exercise/panning/${difficulty}`);
     return response.data;
   },
 
   validatePanningAnswer: async (data: {
     exerciseId: string;
-    userPanValue: number;
-    correctPanValue: number;
+    userAnswer: number;
+    correctAnswer: number;
     tolerance: number;
   }): Promise<PanningValidationResponse> => {
-    const response = await api.post<PanningValidationResponse>('/exercise/panning/validate', data);
+    const response = await api.post<PanningValidationResponse>('/exercise/validate/panning', data);
     return response.data;
   },
 };
 
 export const volumeService = {
   getVolumeExercise: async (difficulty: string = 'easy'): Promise<VolumeExercise> => {
-    const response = await api.get<VolumeExercise>('/exercise/volumes', {
-      params: { difficulty }
-    });
+    const response = await api.get<VolumeExercise>(`/exercise/volumes/${difficulty}`);
     return response.data;
   },
 
   validateVolumeAnswer: async (data: {
     exerciseId: string;
-    userVolumeDifference: number;
-    correctVolumeDifference: number;
+    userAnswer: number;
+    correctAnswer: number;
     tolerance: number;
   }): Promise<VolumeValidationResponse> => {
-    const response = await api.post<VolumeValidationResponse>('/exercise/volumes/validate', data);
+    const response = await api.post<VolumeValidationResponse>('/exercise/validate/volumes', data);
     return response.data;
   },
 };
@@ -259,9 +385,7 @@ export interface EqualizingValidationResponse {
 
 export const equalizingService = {
   getEqualizingExercise: async (difficulty: string = 'easy'): Promise<EqualizingExercise> => {
-    const response = await api.get<EqualizingExercise>('/exercise/equalizing', {
-      params: { difficulty }
-    });
+    const response = await api.get<EqualizingExercise>(`/exercise/equalizing/${difficulty}`);
     return response.data;
   },
 
@@ -271,7 +395,7 @@ export const equalizingService = {
     correctFrequency: number;
     tolerance: number;
   }): Promise<EqualizingValidationResponse> => {
-    const response = await api.post<EqualizingValidationResponse>('/exercise/equalizing/validate', data);
+    const response = await api.post<EqualizingValidationResponse>('/exercise/validate/equalizing', data);
     return response.data;
   },
 };
@@ -312,9 +436,7 @@ export interface IntervalsValidationResponse {
 
 export const intervalsService = {
   getIntervalsExercise: async (difficulty: string = 'easy'): Promise<IntervalsExercise> => {
-    const response = await api.get<IntervalsExercise>('/exercise/intervals', {
-      params: { difficulty }
-    });
+    const response = await api.get<IntervalsExercise>(`/exercise/intervals/${difficulty}`);
     return response.data;
   },
 
@@ -323,7 +445,7 @@ export const intervalsService = {
     userSequence: string[];
     correctSequence: string[];
   }): Promise<IntervalsValidationResponse> => {
-    const response = await api.post<IntervalsValidationResponse>('/exercise/intervals/validate', data);
+    const response = await api.post<IntervalsValidationResponse>('/exercise/validate/intervals', data);
     return response.data;
   },
 };
@@ -367,9 +489,7 @@ export interface HarmoniesValidationResponse {
 
 export const harmoniesService = {
   getHarmoniesExercise: async (difficulty: string = 'easy'): Promise<HarmoniesExercise> => {
-    const response = await api.get<HarmoniesExercise>('/exercise/harmonies', {
-      params: { difficulty }
-    });
+    const response = await api.get<HarmoniesExercise>(`/exercise/harmonies/${difficulty}`);
     return response.data;
   },
 
@@ -378,7 +498,7 @@ export const harmoniesService = {
     userNotes: string[];
     correctNotes: string[];
   }): Promise<HarmoniesValidationResponse> => {
-    const response = await api.post<HarmoniesValidationResponse>('/exercise/harmonies/validate', data);
+    const response = await api.post<HarmoniesValidationResponse>('/exercise/validate/harmonies', data);
     return response.data;
   },
 };

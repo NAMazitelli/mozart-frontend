@@ -1,0 +1,137 @@
+.leaderboard-entry {
+  width: 100%;
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.entry-header h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.rank-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+.entry-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+
+.stat strong {
+  font-size: 1.1em;
+  line-height: 1.2;
+}
+
+.stat p {
+  margin: 2px 0 0 0;
+  font-size: 0.75em;
+  text-align: center;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--ion-color-primary), var(--ion-color-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2em;
+  border-radius: 50%;
+}
+
+.user-position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.user-position h2 {
+  margin: 0;
+  font-size: 2em;
+  font-weight: bold;
+}
+
+.user-position p {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.exercise-filters {
+  background: var(--ion-color-light);
+  margin: 8px 0;
+}
+
+.exercise-filters ion-item {
+  --background: transparent;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-state ion-icon {
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  margin: 8px 0;
+  font-weight: 600;
+}
+
+.empty-state p {
+  margin: 4px 0;
+  opacity: 0.7;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .entry-stats {
+    gap: 12px;
+  }
+
+  .stat {
+    min-width: 50px;
+  }
+
+  .stat strong {
+    font-size: 1em;
+  }
+
+  .stat p {
+    font-size: 0.7em;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .exercise-filters {
+    background: var(--ion-color-dark);
+  }
+}

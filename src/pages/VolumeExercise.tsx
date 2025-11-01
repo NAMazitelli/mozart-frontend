@@ -191,8 +191,8 @@ const VolumeExercise: React.FC = () => {
     try {
       const response = await volumeService.validateVolumeAnswer({
         exerciseId: exercise.id,
-        userVolumeDifference,
-        correctVolumeDifference: exercise.volumeDifference,
+        userAnswer: userVolumeDifference,
+        correctAnswer: exercise.volumeDifference,
         tolerance: exercise.tolerance
       });
 

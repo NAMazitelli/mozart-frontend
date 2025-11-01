@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -19,6 +19,9 @@ import {
   IonButton,
   IonToast,
   IonIcon,
+  IonToggle,
+  IonList,
+  IonLoading,
 } from '@ionic/react';
 import { logOut } from 'ionicons/icons';
 import { useAuth } from '../context/AuthContext';
@@ -30,9 +33,15 @@ const Settings: React.FC = () => {
   const { user, logout } = useAuth();
   const history = useHistory();
   const [language, setLanguage] = useState(user?.language || 'en');
-  const [volume, setVolume] = useState(100);
+  const [volume, setVolume] = useState(user?.preferences?.masterVolume || 100);
+  const [emailNotifications, setEmailNotifications] = useState(user?.preferences?.emailNotifications ?? true);
+  const [pushNotifications, setPushNotifications] = useState(user?.preferences?.pushNotifications ?? true);
+  const [soundEffects, setSoundEffects] = useState(user?.preferences?.soundEffects ?? true);
+  const [vibration, setVibration] = useState(user?.preferences?.vibration ?? true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
 
   const languages = [
     { value: 'en', label: 'English' },
@@ -40,14 +49,56 @@ const Settings: React.FC = () => {
     { value: 'es', label: 'Spanish' },
   ];
 
+  useEffect(() => {
+    const loadSocialAccounts = async () => {
+      try {
+        const response = await userApi.getSocialAccounts();
+        setSocialAccounts(response.data.socialAccounts);
+      } catch (error) {
+        console.error('Failed to load social accounts:', error);
+      }
+    };
+
+    loadSocialAccounts();
+  }, []);
+
   const handleSaveSettings = async () => {
+    setLoading(true);
     try {
+      // Update profile
       await userApi.updateProfile({ language });
+
+      // Update preferences
+      await userApi.updatePreferences({
+        masterVolume: volume,
+        emailNotifications,
+        pushNotifications,
+        soundEffects,
+        vibration,
+      });
+
       setToastMessage('Settings saved successfully!');
       setShowToast(true);
     } catch (error) {
       setToastMessage('Failed to save settings');
       setShowToast(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDisconnectSocial = async (provider: 'google' | 'facebook') => {
+    try {
+      setLoading(true);
+      await userApi.disconnectSocialAccount(provider);
+      setSocialAccounts(prev => prev.filter(account => account.provider !== provider));
+      setToastMessage(`${provider} account disconnected successfully`);
+      setShowToast(true);
+    } catch (error: any) {
+      setToastMessage(error.response?.data?.error || `Failed to disconnect ${provider} account`);
+      setShowToast(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -125,6 +176,51 @@ const Settings: React.FC = () => {
             <p style={{ textAlign: 'center', marginTop: '10px' }}>
               Volume: {volume}%
             </p>
+
+            <IonItem>
+              <IonLabel>Sound Effects</IonLabel>
+              <IonToggle
+                checked={soundEffects}
+                onIonChange={(e) => setSoundEffects(e.detail.checked)}
+              />
+            </IonItem>
+
+            <IonItem>
+              <IonLabel>Vibration</IonLabel>
+              <IonToggle
+                checked={vibration}
+                onIonChange={(e) => setVibration(e.detail.checked)}
+              />
+            </IonItem>
+          </IonCardContent>
+        </IonCard>
+
+        <IonCard>
+          <IonCardHeader>
+            <IonCardTitle>Notifications</IonCardTitle>
+          </IonCardHeader>
+          <IonCardContent>
+            <IonItem>
+              <IonLabel>
+                <h3>Email Notifications</h3>
+                <p>Receive updates and achievements via email</p>
+              </IonLabel>
+              <IonToggle
+                checked={emailNotifications}
+                onIonChange={(e) => setEmailNotifications(e.detail.checked)}
+              />
+            </IonItem>
+
+            <IonItem>
+              <IonLabel>
+                <h3>Push Notifications</h3>
+                <p>Receive app notifications on your device</p>
+              </IonLabel>
+              <IonToggle
+                checked={pushNotifications}
+                onIonChange={(e) => setPushNotifications(e.detail.checked)}
+              />
+            </IonItem>
           </IonCardContent>
         </IonCard>
 
@@ -146,6 +242,30 @@ const Settings: React.FC = () => {
               </IonLabel>
             </IonItem>
 
+            {socialAccounts.length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <IonLabel>
+                  <h3>Connected Accounts</h3>
+                </IonLabel>
+                {socialAccounts.map((account) => (
+                  <IonItem key={account.provider}>
+                    <IonLabel>
+                      <h4 style={{ textTransform: 'capitalize' }}>{account.provider}</h4>
+                      <p>{account.provider_email || 'Connected'}</p>
+                    </IonLabel>
+                    <IonButton
+                      fill="clear"
+                      color="danger"
+                      size="small"
+                      onClick={() => handleDisconnectSocial(account.provider)}
+                    >
+                      Disconnect
+                    </IonButton>
+                  </IonItem>
+                ))}
+              </div>
+            )}
+
             <IonButton
               expand="block"
               fill="outline"
@@ -166,6 +286,8 @@ const Settings: React.FC = () => {
         >
           Save Settings
         </IonButton>
+
+        <IonLoading isOpen={loading} message="Saving settings..." />
 
         <IonToast
           isOpen={showToast}

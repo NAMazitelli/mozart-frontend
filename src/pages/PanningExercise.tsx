@@ -179,8 +179,8 @@ const PanningExercise: React.FC = () => {
     try {
       const response = await panningService.validatePanningAnswer({
         exerciseId: exercise.id,
-        userPanValue,
-        correctPanValue: exercise.correctPanValue,
+        userAnswer: userPanValue,
+        correctAnswer: exercise.correctPanValue,
         tolerance: exercise.tolerance
       });
 

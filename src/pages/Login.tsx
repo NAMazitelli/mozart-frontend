@@ -33,6 +33,51 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const history = useHistory();
 
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    try {
+      // For web browsers, redirect to OAuth provider
+      if (provider === 'google') {
+        window.location.href = authApi.getGoogleAuthUrl();
+      } else if (provider === 'facebook') {
+        window.location.href = authApi.getFacebookAuthUrl();
+      }
+    } catch (err: any) {
+      setError(`${provider} login failed`);
+      setShowToast(true);
+    }
+  };
+
+  // Handle OAuth callback tokens (if redirected back with token)
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const provider = urlParams.get('provider');
+
+    if (token && provider) {
+      // OAuth callback success
+      try {
+        // Extract user data from token (you might want to fetch user profile separately)
+        login(token, { id: 0, email: '', username: '', totalScore: 0, currentStreak: 0, longestStreak: 0, totalExercisesCompleted: 0, language: 'en' });
+        history.push('/main');
+
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (err) {
+        setError('Authentication failed');
+        setShowToast(true);
+      }
+    }
+
+    const errorMessage = urlParams.get('message');
+    if (errorMessage === 'oauth_error') {
+      setError('Social login failed. Please try again.');
+      setShowToast(true);
+
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [login, history]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -183,13 +228,13 @@ const Login: React.FC = () => {
               {isLogin ? 'Or sign in with' : 'Or sign up with'}
             </p>
             <div className="social-buttons">
-              <IonButton fill="clear" className="social-btn">
+              <IonButton fill="clear" className="social-btn" onClick={() => handleSocialLogin('google')}>
                 <IonIcon icon={logoGoogle} />
               </IonButton>
-              <IonButton fill="clear" className="social-btn">
+              <IonButton fill="clear" className="social-btn" onClick={() => handleSocialLogin('facebook')}>
                 <IonIcon icon={logoFacebook} />
               </IonButton>
-              <IonButton fill="clear" className="social-btn">
+              <IonButton fill="clear" className="social-btn" disabled>
                 <IonIcon icon={logoApple} />
               </IonButton>
             </div>

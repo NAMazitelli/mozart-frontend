@@ -184,7 +184,7 @@ const MainMenu: React.FC = () => {
             <IonTabButton tab="home" className="tab-button active">
               <IonIcon icon={home} />
             </IonTabButton>
-            <IonTabButton tab="trophy" className="tab-button">
+            <IonTabButton tab="trophy" className="tab-button" onClick={() => history.push('/leaderboard')}>
               <IonIcon icon={trophy} />
             </IonTabButton>
             <IonTabButton tab="wave" className="tab-button">
