@@ -23,6 +23,7 @@ import {
 import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
 import { exerciseService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
 import './GuessNoteExercise.css';
 
@@ -49,6 +50,7 @@ interface GuessNoteExercise {
 
 const GuessNoteExercise: React.FC = () => {
   const { difficulty } = useParams<{ difficulty: string }>();
+  const { isGuest } = useAuth();
   const [exercise, setExercise] = useState<GuessNoteExercise | null>(null);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -147,19 +149,39 @@ const GuessNoteExercise: React.FC = () => {
     setIsAnswered(true);
 
     try {
-      const response = await exerciseService.validateGuessNoteAnswer({
-        exerciseId: exercise.id,
-        selectedAnswerIndex: answerIndex,
-        correctAnswerIndex: exercise.correctAnswerIndex
-      });
+      // For guest users, calculate validation locally without API call
+      if (isGuest) {
+        const isCorrect = answerIndex === exercise.correctAnswerIndex;
+        const correctNote = exercise.options[exercise.correctAnswerIndex];
+        const selectedNote = exercise.options[answerIndex];
 
-      setIsCorrect(response.isCorrect);
-      setModalMessage(response.message);
-      setAccuracy(response.isCorrect ? 100 : 0); // Set accuracy based on correctness
-      setShowModal(true);
+        setIsCorrect(isCorrect);
+        setAccuracy(isCorrect ? 100 : 0);
 
-      if (response.isCorrect) {
-        setScore(prev => prev + exercise.points);
+        if (isCorrect) {
+          setModalMessage(`Correct! The note was ${correctNote.displayName}.`);
+          setScore(prev => prev + exercise.points);
+        } else {
+          setModalMessage(`Not quite right. The correct note was ${correctNote.displayName}. You guessed ${selectedNote.displayName}.`);
+        }
+
+        setShowModal(true);
+      } else {
+        // For logged-in users, use API validation
+        const response = await exerciseService.validateGuessNoteAnswer({
+          exerciseId: exercise.id,
+          selectedAnswerIndex: answerIndex,
+          correctAnswerIndex: exercise.correctAnswerIndex
+        });
+
+        setIsCorrect(response.isCorrect);
+        setModalMessage(response.message);
+        setAccuracy(response.isCorrect ? 100 : 0); // Set accuracy based on correctness
+        setShowModal(true);
+
+        if (response.isCorrect) {
+          setScore(prev => prev + exercise.points);
+        }
       }
     } catch (error) {
       console.error('Error validating answer:', error);

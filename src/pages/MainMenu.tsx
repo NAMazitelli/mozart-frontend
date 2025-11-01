@@ -29,7 +29,7 @@ import { useHistory } from 'react-router-dom';
 import './MainMenu.css';
 
 const MainMenu: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [searchText, setSearchText] = useState('');
   const history = useHistory();
 
@@ -86,8 +86,13 @@ const MainMenu: React.FC = () => {
         {/* Header Section */}
         <div className="header-section">
           <div className="user-info">
-            <h1 className="username">{user?.username || 'Mohamed'}</h1>
-            <p className="welcome-message">Welcome to Mozart!</p>
+            <h1 className="username">
+              {user?.username || 'Mohamed'}
+              {isGuest && <span className="guest-badge">👤 Guest</span>}
+            </h1>
+            <p className="welcome-message">
+              {isGuest ? 'Playing as Guest - Progress won\'t be saved' : 'Welcome to Mozart!'}
+            </p>
           </div>
           <div className="streak-info">
             <span className="fire-icon">🔥</span>

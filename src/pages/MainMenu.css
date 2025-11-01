@@ -23,6 +23,21 @@
   font-weight: 600;
   margin: 0 0 4px 0;
   color: var(--ion-text-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.guest-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--ion-color-warning);
+  color: var(--ion-color-warning-contrast);
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .welcome-message {

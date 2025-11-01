@@ -30,7 +30,7 @@ import { userApi } from '../services/api';
 import ThemeToggle from '../components/ThemeToggle';
 
 const Settings: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isGuest } = useAuth();
   const history = useHistory();
   const [language, setLanguage] = useState(user?.language || 'en');
   const [volume, setVolume] = useState(user?.preferences?.masterVolume || 100);
@@ -51,6 +51,8 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     const loadSocialAccounts = async () => {
+      if (isGuest) return; // Skip loading for guests
+
       try {
         const response = await userApi.getSocialAccounts();
         setSocialAccounts(response.data.socialAccounts);
@@ -60,9 +62,15 @@ const Settings: React.FC = () => {
     };
 
     loadSocialAccounts();
-  }, []);
+  }, [isGuest]);
 
   const handleSaveSettings = async () => {
+    if (isGuest) {
+      setToastMessage('Settings are temporarily saved for this session only');
+      setShowToast(true);
+      return;
+    }
+
     setLoading(true);
     try {
       // Update profile

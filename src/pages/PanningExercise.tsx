@@ -28,6 +28,7 @@ import {
 import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, headset } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
 import { panningService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
 import './PanningExercise.css';
 
@@ -52,6 +53,7 @@ interface PanningExercise {
 }
 
 const PanningExercise: React.FC = () => {
+  const { isGuest } = useAuth();
   const [exercise, setExercise] = useState<PanningExercise | null>(null);
   const [userPanValue, setUserPanValue] = useState<number>(0);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -177,20 +179,40 @@ const PanningExercise: React.FC = () => {
     setIsAnswered(true);
 
     try {
-      const response = await panningService.validatePanningAnswer({
-        exerciseId: exercise.id,
-        userAnswer: userPanValue,
-        correctAnswer: exercise.correctPanValue,
-        tolerance: exercise.tolerance
-      });
+      // For guest users, calculate validation locally without API call
+      if (isGuest) {
+        const difference = Math.abs(userPanValue - exercise.correctPanValue);
+        const isCorrect = difference <= exercise.tolerance;
+        const accuracy = Math.max(0, (1 - difference / (exercise.tolerance * 2)) * 100);
 
-      setIsCorrect(response.isCorrect);
-      setAccuracy(response.accuracy);
-      setModalMessage(response.message);
-      setShowModal(true);
+        setIsCorrect(isCorrect);
+        setAccuracy(accuracy);
 
-      if (response.isCorrect) {
-        setScore(prev => prev + exercise.points);
+        if (isCorrect) {
+          setModalMessage(`Correct! The sound was positioned ${exercise.panDescription}.`);
+          setScore(prev => prev + exercise.points);
+        } else {
+          setModalMessage(`Not quite right. The correct position was ${exercise.panDescription}. You guessed ${formatPanValue(userPanValue)}.`);
+        }
+
+        setShowModal(true);
+      } else {
+        // For logged-in users, use API validation
+        const response = await panningService.validatePanningAnswer({
+          exerciseId: exercise.id,
+          userAnswer: userPanValue,
+          correctAnswer: exercise.correctPanValue,
+          tolerance: exercise.tolerance
+        });
+
+        setIsCorrect(response.isCorrect);
+        setAccuracy(response.accuracy);
+        setModalMessage(response.message);
+        setShowModal(true);
+
+        if (response.isCorrect) {
+          setScore(prev => prev + exercise.points);
+        }
       }
     } catch (error) {
       console.error('Error validating answer:', error);

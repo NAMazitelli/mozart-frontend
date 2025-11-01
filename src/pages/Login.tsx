@@ -30,7 +30,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const { login } = useAuth();
+  const { login, loginAsGuest } = useAuth();
   const history = useHistory();
 
   const handleSocialLogin = async (provider: 'google' | 'facebook') => {
@@ -77,6 +77,11 @@ const Login: React.FC = () => {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [login, history]);
+
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    history.push('/main');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,6 +243,22 @@ const Login: React.FC = () => {
                 <IonIcon icon={logoApple} />
               </IonButton>
             </div>
+          </div>
+
+          {/* Play as Guest */}
+          <div className="guest-section">
+            <IonButton
+              expand="block"
+              fill="clear"
+              color="medium"
+              onClick={handleGuestLogin}
+              className="guest-button"
+            >
+              🎵 Play as Guest
+            </IonButton>
+            <IonText color="medium" className="guest-description">
+              <p>Try exercises without creating an account (progress won't be saved)</p>
+            </IonText>
           </div>
 
           {/* Toggle Login/Register */}

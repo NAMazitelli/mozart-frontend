@@ -27,6 +27,7 @@ import {
 } from '@ionic/react';
 import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, musicalNote } from 'ionicons/icons';
 import { volumeService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
 import './VolumeExercise.css';
 
@@ -50,6 +51,7 @@ interface VolumeExercise {
 }
 
 const VolumeExercise: React.FC = () => {
+  const { isGuest } = useAuth();
   const [exercise, setExercise] = useState<VolumeExercise | null>(null);
   const [userVolumeDifference, setUserVolumeDifference] = useState<number>(0);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -189,20 +191,40 @@ const VolumeExercise: React.FC = () => {
     setIsAnswered(true);
 
     try {
-      const response = await volumeService.validateVolumeAnswer({
-        exerciseId: exercise.id,
-        userAnswer: userVolumeDifference,
-        correctAnswer: exercise.volumeDifference,
-        tolerance: exercise.tolerance
-      });
+      // For guest users, calculate validation locally without API call
+      if (isGuest) {
+        const difference = Math.abs(userVolumeDifference - exercise.volumeDifference);
+        const isCorrect = difference <= exercise.tolerance;
+        const accuracy = Math.max(0, (1 - difference / (exercise.tolerance * 2)) * 100);
 
-      setIsCorrect(response.isCorrect);
-      setAccuracy(response.accuracy);
-      setModalMessage(response.message);
-      setShowModal(true);
+        setIsCorrect(isCorrect);
+        setAccuracy(accuracy);
 
-      if (response.isCorrect) {
-        setScore(prev => prev + exercise.points);
+        if (isCorrect) {
+          setModalMessage(`Correct! The second note was ${exercise.volumeDifference > 0 ? '+' : ''}${exercise.volumeDifference}dB ${exercise.volumeDifference > 0 ? 'louder' : exercise.volumeDifference < 0 ? 'quieter' : 'the same volume'}.`);
+          setScore(prev => prev + exercise.points);
+        } else {
+          setModalMessage(`Not quite right. The second note was ${exercise.volumeDifference > 0 ? '+' : ''}${exercise.volumeDifference}dB ${exercise.volumeDifference > 0 ? 'louder' : exercise.volumeDifference < 0 ? 'quieter' : 'the same volume'}. You guessed ${userVolumeDifference > 0 ? '+' : ''}${userVolumeDifference}dB.`);
+        }
+
+        setShowModal(true);
+      } else {
+        // For logged-in users, use API validation
+        const response = await volumeService.validateVolumeAnswer({
+          exerciseId: exercise.id,
+          userAnswer: userVolumeDifference,
+          correctAnswer: exercise.volumeDifference,
+          tolerance: exercise.tolerance
+        });
+
+        setIsCorrect(response.isCorrect);
+        setAccuracy(response.accuracy);
+        setModalMessage(response.message);
+        setShowModal(true);
+
+        if (response.isCorrect) {
+          setScore(prev => prev + exercise.points);
+        }
       }
     } catch (error) {
       console.error('Error validating answer:', error);
