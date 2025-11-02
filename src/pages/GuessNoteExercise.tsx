@@ -25,6 +25,7 @@ import { useParams } from 'react-router-dom';
 import { exerciseService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
+import { getDifficultyFromUrl, logApiCall } from '../utils/exerciseUtils';
 import './GuessNoteExercise.css';
 
 interface GuessNoteExercise {
@@ -88,20 +89,28 @@ const GuessNoteExercise: React.FC = () => {
     loadNewExercise();
   }, []);
 
-  // Use difficulty from URL params, default to 'easy'
-  const currentDifficulty = difficulty || 'easy';
+  // Use difficulty from URL params with fallback extraction for mobile
+  const currentDifficulty = getDifficultyFromUrl(difficulty, 'GuessNote');
 
   const loadNewExercise = async () => {
     setLoading(true);
     try {
+      logApiCall('GuessNote', 'guess-note', currentDifficulty);
       const response = await exerciseService.getGuessNoteExercise(currentDifficulty);
+
+      // Debug: Log the frequencies we received
+      console.log('GuessNote - Exercise loaded:', response);
+      console.log('GuessNote - Correct note frequency:', response.correctNote.frequency);
+      console.log('GuessNote - Options:', response.options);
+
       setExercise(response);
       setSelectedAnswer(null);
       setIsAnswered(false);
       setIsCorrect(false);
       setQuestionCount(prev => prev + 1);
     } catch (error) {
-      console.error('Error loading exercise:', error);
+      console.error('GuessNote - Error loading exercise:', error);
+      logApiCall('GuessNote', 'guess-note', currentDifficulty, true);
       setModalMessage('Failed to load exercise. Please try again.');
       setShowModal(true);
     } finally {

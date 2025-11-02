@@ -395,7 +395,14 @@ export const equalizingService = {
     correctFrequency: number;
     tolerance: number;
   }): Promise<EqualizingValidationResponse> => {
-    const response = await api.post<EqualizingValidationResponse>('/exercise/validate/equalizing', data);
+    // Map parameters to what the backend expects
+    const backendData = {
+      exerciseId: data.exerciseId,
+      userAnswer: data.userFrequency,
+      correctAnswer: data.correctFrequency,
+      tolerance: data.tolerance
+    };
+    const response = await api.post<EqualizingValidationResponse>('/exercise/validate/equalizing', backendData);
     return response.data;
   },
 };

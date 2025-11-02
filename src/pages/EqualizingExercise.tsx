@@ -157,32 +157,33 @@ const EqualizingExercise: React.FC = () => {
         return;
       }
 
+      console.log(`EQ - Playing sound: ${applyEQ ? 'WITH' : 'WITHOUT'} EQ filter`);
+      if (applyEQ) {
+        console.log(`EQ - Filter: ${exercise.targetFrequency}Hz, ${exercise.eqGainDb}dB, Q=${exercise.qFactor}`);
+      }
+
       // Create oscillator and gain node
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-
-      // Set up audio chain
-      let audioChain: AudioNode = oscillator;
-      audioChain.connect(gainNode);
 
       // Apply EQ filter if requested
       if (applyEQ) {
         const eqFilter = createBiquadFilter(
           audioContext,
           exercise.targetFrequency,
-          exercise.qFactor,
+          exercise.qFactor || 4.0,
           exercise.eqGainDb
         );
 
-        // Insert filter into chain: oscillator -> filter -> gain
+        // Connect chain: oscillator -> filter -> gain -> destination
         oscillator.connect(eqFilter);
         eqFilter.connect(gainNode);
+        gainNode.connect(audioContext.destination);
       } else {
+        // Connect chain: oscillator -> gain -> destination
         oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
       }
-
-      // Connect to destination
-      gainNode.connect(audioContext.destination);
 
       // Configure oscillator
       oscillator.type = waveType;
@@ -228,24 +229,23 @@ const EqualizingExercise: React.FC = () => {
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
-      let audioChain: AudioNode = oscillator;
-      audioChain.connect(gainNode);
-
       if (applyEQ) {
         const eqFilter = createBiquadFilter(
           audioContext,
           testFreq || exercise.targetFrequency,
-          exercise.qFactor,
+          exercise.qFactor || 4.0,
           exercise.eqGainDb
         );
 
+        // Connect chain: oscillator -> filter -> gain -> destination
         oscillator.connect(eqFilter);
         eqFilter.connect(gainNode);
+        gainNode.connect(audioContext.destination);
       } else {
+        // Connect chain: oscillator -> gain -> destination
         oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
       }
-
-      gainNode.connect(audioContext.destination);
 
       oscillator.type = waveType;
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);

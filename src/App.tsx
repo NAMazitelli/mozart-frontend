@@ -84,10 +84,10 @@ const AppRoutes: React.FC = () => {
             <OAuthSuccess />
           </Route>
           <Route exact path="/main">
-            {isAuthenticated ? <MainMenu /> : <Redirect to="/login" />}
+            <MainMenu />
           </Route>
           <Route exact path="/category/:categoryId">
-            {isAuthenticated ? <CategorySelect /> : <Redirect to="/login" />}
+            <CategorySelect />
           </Route>
           <Route exact path="/settings">
             {isAuthenticated ? <Settings /> : <Redirect to="/login" />}
@@ -96,25 +96,25 @@ const AppRoutes: React.FC = () => {
             {isAuthenticated ? <Leaderboard /> : <Redirect to="/login" />}
           </Route>
           <Route exact path="/difficulty/:exerciseType">
-            {isAuthenticated ? <DifficultySelection /> : <Redirect to="/login" />}
+            <DifficultySelection />
           </Route>
           <Route exact path="/exercise/guess-note/:difficulty">
-            {isAuthenticated ? <GuessNoteExercise /> : <Redirect to="/login" />}
+            <GuessNoteExercise />
           </Route>
           <Route exact path="/exercise/panning/:difficulty">
-            {isAuthenticated ? <PanningExercise /> : <Redirect to="/login" />}
+            <PanningExercise />
           </Route>
           <Route exact path="/exercise/volumes/:difficulty">
-            {isAuthenticated ? <VolumeExercise /> : <Redirect to="/login" />}
+            <VolumeExercise />
           </Route>
           <Route exact path="/exercise/equalizing/:difficulty">
-            {isAuthenticated ? <EqualizingExercise /> : <Redirect to="/login" />}
+            <EqualizingExercise />
           </Route>
           <Route exact path="/exercise/intervals/:difficulty">
-            {isAuthenticated ? <IntervalsExercise /> : <Redirect to="/login" />}
+            <IntervalsExercise />
           </Route>
           <Route exact path="/exercise/harmonies/:difficulty">
-            {isAuthenticated ? <HarmoniesExercise /> : <Redirect to="/login" />}
+            <HarmoniesExercise />
           </Route>
           <Route exact path="/">
             <Redirect to={isAuthenticated ? "/main" : "/login"} />

@@ -134,21 +134,21 @@ const VolumeExercise: React.FC = () => {
     setPlaybackStatus('playing-first');
 
     // Play first note (reference volume)
-    await playNote(exercise.note.frequency, exercise.referenceGain, 1.0);
+    await playNote(exercise.note.frequency, exercise.referenceGain, 1.5);
 
-    // 2 second pause
+    // 1 second pause
     setPlaybackStatus('pausing');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Play second note (different volume)
     setPlaybackStatus('playing-second');
-    await playNote(exercise.note.frequency, exercise.secondGain, 1.0);
+    await playNote(exercise.note.frequency, exercise.secondGain, 1.5);
 
     setPlaybackStatus('finished');
     setIsPlaying(false);
   };
 
-  const playNote = (frequency: number, gain: number, duration: number): Promise<void> => {
+  const playNote = (frequency: number, gainDb: number, duration: number): Promise<void> => {
     return new Promise((resolve) => {
       if (!audioContext) {
         resolve();
@@ -167,9 +167,15 @@ const VolumeExercise: React.FC = () => {
       oscillator.type = 'sine';
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
 
+      // Convert dB to linear gain: gain = 10^(dB/20)
+      const baseVolume = 0.3; // Base volume level
+      const linearGain = baseVolume * Math.pow(10, gainDb / 20);
+
+      console.log(`Volume - Playing note: ${gainDb}dB -> ${linearGain.toFixed(3)} linear gain`);
+
       // Configure gain (volume envelope)
       gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(gain, audioContext.currentTime + 0.05);
+      gainNode.gain.linearRampToValueAtTime(linearGain, audioContext.currentTime + 0.05);
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration - 0.05);
 
       // Play note

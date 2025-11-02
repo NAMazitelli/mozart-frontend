@@ -26,10 +26,11 @@ import {
   IonLabel
 } from '@ionic/react';
 import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, headset } from 'ionicons/icons';
-import { useParams } from 'react-router-dom';
+import { useParams, useHistory } from 'react-router-dom';
 import { panningService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
+import { getDifficultyFromUrl, logApiCall } from '../utils/exerciseUtils';
 import './PanningExercise.css';
 
 interface PanningExercise {
@@ -53,6 +54,8 @@ interface PanningExercise {
 }
 
 const PanningExercise: React.FC = () => {
+  const { difficulty: urlDifficulty } = useParams<{ difficulty: string }>();
+  const history = useHistory();
   const { isGuest } = useAuth();
   const [exercise, setExercise] = useState<PanningExercise | null>(null);
   const [userPanValue, setUserPanValue] = useState<number>(0);
@@ -64,7 +67,6 @@ const PanningExercise: React.FC = () => {
   const [modalMessage, setModalMessage] = useState('');
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [accuracy, setAccuracy] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentOscillator, setCurrentOscillator] = useState<OscillatorNode | null>(null);
@@ -89,22 +91,19 @@ const PanningExercise: React.FC = () => {
     };
   }, []);
 
+  // Get difficulty from URL params with fallback extraction for mobile
+  const currentDifficulty = getDifficultyFromUrl(urlDifficulty, 'Panning');
+
   // Load exercise
   useEffect(() => {
     loadNewExercise();
   }, []);
 
-  // Reload exercise when difficulty changes
-  useEffect(() => {
-    if (questionCount > 0) {
-      loadNewExercise();
-    }
-  }, [difficulty]);
-
   const loadNewExercise = async () => {
     setLoading(true);
     try {
-      const response = await panningService.getPanningExercise(difficulty);
+      logApiCall('Panning', 'panning', currentDifficulty);
+      const response = await panningService.getPanningExercise(currentDifficulty);
       setExercise(response);
       setUserPanValue(0); // Reset slider to center
       setIsAnswered(false);
@@ -112,7 +111,8 @@ const PanningExercise: React.FC = () => {
       setAccuracy(0);
       setQuestionCount(prev => prev + 1);
     } catch (error) {
-      console.error('Error loading exercise:', error);
+      console.error('Panning - Error loading exercise:', error);
+      logApiCall('Panning', 'panning', currentDifficulty, true);
       setModalMessage('Failed to load exercise. Please try again.');
       setShowModal(true);
     } finally {
@@ -230,9 +230,8 @@ const PanningExercise: React.FC = () => {
   };
 
   const handleDifficultyChange = (newDifficulty: 'easy' | 'medium' | 'hard') => {
-    setDifficulty(newDifficulty);
-    setScore(0);
-    setQuestionCount(0);
+    // Navigate to new URL with the selected difficulty
+    history.push(`/exercise/panning/${newDifficulty}`);
   };
 
   const formatPanValue = (value: number) => {
@@ -301,12 +300,12 @@ const PanningExercise: React.FC = () => {
           <IonCardContent>
             <div className="difficulty-header">
               <h3>Difficulty Level</h3>
-              <IonBadge color={difficulty === 'easy' ? 'success' : difficulty === 'medium' ? 'warning' : 'danger'}>
-                {difficulty.toUpperCase()}
+              <IonBadge color={currentDifficulty === 'easy' ? 'success' : currentDifficulty === 'medium' ? 'warning' : 'danger'}>
+                {currentDifficulty.toUpperCase()}
               </IonBadge>
             </div>
             <IonSegment
-              value={difficulty}
+              value={currentDifficulty}
               onIonChange={(e: CustomEvent) => handleDifficultyChange(e.detail.value as 'easy' | 'medium' | 'hard')}
             >
               <IonSegmentButton value="easy">
