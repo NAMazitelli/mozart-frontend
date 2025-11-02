@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -16,72 +16,76 @@ import {
   IonButtons,
   IonProgressBar,
   IonBadge,
-  IonRange
+  IonRange,
+  IonGrid,
+  IonRow,
+  IonCol,
+  IonToggle,
+  IonItem,
+  IonLabel
 } from '@ionic/react';
-import { playOutline, checkmarkCircle, closeCircle, radio, musicalNote } from 'ionicons/icons';
+import { playOutline, checkmarkCircle, closeCircle, radio, musicalNote, swapHorizontal } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
-import { equalizingService } from '../services/api';
+import { equalizingService, EqualizingExercise } from '../services/api';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
 import './EqualizingExercise.css';
 
-interface EqualizingExercise {
-  id: string;
-  type: string;
-  category: string;
-  difficulty: string;
-  question: string;
-  sound: {
-    type: string;
-    frequency: number;
-    displayName: string;
-    description: string;
-  };
-  targetFrequency: number;
-  eqGainDb: number;
-  isBoost: boolean;
-  tolerance: number;
-  qFactor: number;
-  points: number;
-  difficultyInfo: string;
-  eqDescription: string;
-}
-
-const EqualizingExercise: React.FC = () => {
+const EqualizingExercisePage: React.FC = () => {
   const { difficulty } = useParams<{ difficulty: string }>();
   const [exercise, setExercise] = useState<EqualizingExercise | null>(null);
   const [userFrequency, setUserFrequency] = useState<number>(1000);
+  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
+
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [accuracy, setAccuracy] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackStatus, setPlaybackStatus] = useState<'ready' | 'playing-original' | 'pausing' | 'playing-eq' | 'finished'>('ready');
+  const [showEQToggle, setShowEQToggle] = useState(false);
+  const [useEQ, setUseEQ] = useState(false);
   const [validationResponse, setValidationResponse] = useState<any>(null);
+
+  // Single Audio with VERY Dramatic Web Audio Filter
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const filterRef = useRef<BiquadFilterNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
 
   // Use difficulty from URL params, default to 'easy'
   const currentDifficulty = difficulty || 'easy';
 
-  // Initialize Audio Context
+  // Initialize Single Audio with Filter Toggle
   useEffect(() => {
-    const initAudio = () => {
+    const initAudio = async () => {
       try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        setAudioContext(ctx);
+        // Create Audio Context
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        // Create single audio element
+        audioRef.current = new Audio();
+        audioRef.current.loop = true;
+        audioRef.current.crossOrigin = 'anonymous';
+
+
       } catch (error) {
-        console.error('Error initializing audio context:', error);
+        console.error('Error initializing audio:', error);
       }
     };
 
     initAudio();
 
     return () => {
-      if (audioContext) {
-        audioContext.close();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
       }
     };
   }, []);
@@ -91,18 +95,53 @@ const EqualizingExercise: React.FC = () => {
     loadNewExercise();
   }, []);
 
+  // Handle EQ toggle - enable/disable Web Audio filter
+  useEffect(() => {
+    if (filterRef.current && isPlaying) {
+      if (useEQ) {
+        // Apply filter effect
+        filterRef.current.frequency.value = exercise?.targetFrequency || 1000;
+        filterRef.current.type = (exercise?.filterType as BiquadFilterType) || 'lowpass';
+        filterRef.current.Q.value = 8.0; // Noticeable but not extreme filter
+      } else {
+        // Bypass filter by using allpass type (passes all frequencies unchanged)
+        filterRef.current.type = 'allpass';
+        filterRef.current.frequency.value = 1000;
+        filterRef.current.Q.value = 0.1;
+      }
+    }
+  }, [useEQ, exercise?.filterType, exercise?.targetFrequency, isPlaying]);
+
   const loadNewExercise = async () => {
     setLoading(true);
     try {
       const response = await equalizingService.getEqualizingExercise(currentDifficulty);
       setExercise(response);
-      setUserFrequency(1000); // Reset slider to middle
+
+      // Reset states
+      setUserFrequency(1000);
+      setSelectedAnswerIndex(null);
       setIsAnswered(false);
       setIsCorrect(false);
       setAccuracy(0);
-      setPlaybackStatus('ready');
+      setShowEQToggle(false);
+      setUseEQ(false); // This will trigger the filter reset in the useEffect
       setValidationResponse(null);
       setQuestionCount(prev => prev + 1);
+
+      // Reset filter to bypass state if it exists
+      if (filterRef.current) {
+        filterRef.current.type = 'allpass';
+        filterRef.current.frequency.value = 1000;
+        filterRef.current.Q.value = 0.1;
+      }
+
+      // Setup single audio source
+      if (audioRef.current && response.sound.filename) {
+        const audioSrc = `/sounds/${response.sound.filename}`;
+        audioRef.current.src = audioSrc;
+      }
+
     } catch (error) {
       console.error('Error loading exercise:', error);
       setModalMessage('Failed to load exercise. Please try again.');
@@ -112,171 +151,94 @@ const EqualizingExercise: React.FC = () => {
     }
   };
 
-  const createBiquadFilter = (audioContext: AudioContext, frequency: number, qFactor: number, gainDb: number): BiquadFilterNode => {
-    const filter = audioContext.createBiquadFilter();
-    filter.type = 'peaking';
-    filter.frequency.setValueAtTime(frequency, audioContext.currentTime);
-    filter.Q.setValueAtTime(qFactor, audioContext.currentTime);
-    filter.gain.setValueAtTime(gainDb, audioContext.currentTime);
-    return filter;
-  };
+  const playAudio = async () => {
+    if (!audioRef.current || !audioContextRef.current || isPlaying) return;
 
-  const playSequentialEQComparison = async () => {
-    if (!audioContext || !exercise || isPlaying) {
-      console.error('Audio context, exercise not available, or already playing');
-      return;
+    try {
+      // Resume audio context if suspended
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
+      // Setup Web Audio routing if not already connected
+      if (!sourceNodeRef.current) {
+        // Create source from audio element
+        sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
+
+        // Create filter node
+        filterRef.current = audioContextRef.current.createBiquadFilter();
+        filterRef.current.type = 'allpass'; // Start in bypass mode
+        filterRef.current.frequency.value = 1000;
+        filterRef.current.Q.value = 0.1;
+
+        // Create gain node
+        gainRef.current = audioContextRef.current.createGain();
+        gainRef.current.gain.value = 1.0;
+
+        // Connect: source -> filter -> gain -> destination
+        sourceNodeRef.current.connect(filterRef.current);
+        filterRef.current.connect(gainRef.current);
+        gainRef.current.connect(audioContextRef.current.destination);
+      }
+
+      setIsPlaying(true);
+      await audioRef.current.play();
+      setShowEQToggle(true);
+
+      // Auto-stop after 5 seconds for demo
+      setTimeout(() => {
+        if (audioRef.current && isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        }
+      }, 5000);
+
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setIsPlaying(false);
     }
+  };
 
-    // Resume audio context if suspended
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
     }
-
-    setIsPlaying(true);
-    setPlaybackStatus('playing-original');
-
-    // Play original sound (no EQ)
-    await playSound(exercise.sound.frequency, exercise.sound.type as OscillatorType, 1.5, false);
-
-    // 2 second pause
-    setPlaybackStatus('pausing');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Play EQ'd sound
-    setPlaybackStatus('playing-eq');
-    await playSound(exercise.sound.frequency, exercise.sound.type as OscillatorType, 1.5, true);
-
-    setPlaybackStatus('finished');
-    setIsPlaying(false);
   };
 
-  const playSound = (frequency: number, waveType: OscillatorType, duration: number, applyEQ: boolean): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!audioContext || !exercise) {
-        resolve();
-        return;
-      }
-
-      console.log(`EQ - Playing sound: ${applyEQ ? 'WITH' : 'WITHOUT'} EQ filter`);
-      if (applyEQ) {
-        console.log(`EQ - Filter: ${exercise.targetFrequency}Hz, ${exercise.eqGainDb}dB, Q=${exercise.qFactor}`);
-      }
-
-      // Create oscillator and gain node
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      // Apply EQ filter if requested
-      if (applyEQ) {
-        const eqFilter = createBiquadFilter(
-          audioContext,
-          exercise.targetFrequency,
-          exercise.qFactor || 4.0,
-          exercise.eqGainDb
-        );
-
-        // Connect chain: oscillator -> filter -> gain -> destination
-        oscillator.connect(eqFilter);
-        eqFilter.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-      } else {
-        // Connect chain: oscillator -> gain -> destination
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-      }
-
-      // Configure oscillator
-      oscillator.type = waveType;
-      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-
-      // Configure gain (volume envelope)
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration - 0.05);
-
-      // Play sound
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + duration);
-
-      oscillator.onended = () => {
-        resolve();
-      };
-
-      // Fallback in case onended doesn't fire
-      setTimeout(() => resolve(), duration * 1000 + 100);
-    });
-  };
-
-  const playTestFrequency = async (frequency: number) => {
-    if (!audioContext || !exercise || isPlaying) return;
-
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
-
-    setIsPlaying(true);
-    await playTestSound(exercise.sound.frequency, exercise.sound.type as OscillatorType, 1.5, true, frequency);
-    setIsPlaying(false);
-  };
-
-  const playTestSound = (frequency: number, waveType: OscillatorType, duration: number, applyEQ: boolean, testFreq?: number): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!audioContext || !exercise) {
-        resolve();
-        return;
-      }
-
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      if (applyEQ) {
-        const eqFilter = createBiquadFilter(
-          audioContext,
-          testFreq || exercise.targetFrequency,
-          exercise.qFactor || 4.0,
-          exercise.eqGainDb
-        );
-
-        // Connect chain: oscillator -> filter -> gain -> destination
-        oscillator.connect(eqFilter);
-        eqFilter.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-      } else {
-        // Connect chain: oscillator -> gain -> destination
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-      }
-
-      oscillator.type = waveType;
-      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration - 0.05);
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + duration);
-
-      oscillator.onended = () => {
-        resolve();
-      };
-
-      setTimeout(() => resolve(), duration * 1000 + 100);
-    });
+  const handleAnswerSelection = (answerIndex: number) => {
+    if (isAnswered) return;
+    setSelectedAnswerIndex(answerIndex);
   };
 
   const handleSubmitAnswer = async () => {
     if (isAnswered || !exercise) return;
 
     setIsAnswered(true);
+    stopAudio();
 
     try {
-      const response = await equalizingService.validateEqualizingAnswer({
-        exerciseId: exercise.id,
-        userFrequency,
-        correctFrequency: exercise.targetFrequency,
-        tolerance: exercise.tolerance
-      });
+      let response;
+
+      if (exercise.answerType === 'multiple-choice') {
+        // Multiple choice validation
+        response = await equalizingService.validateEqualizingAnswer({
+          exerciseId: exercise.id,
+          correctFrequency: exercise.targetFrequency,
+          tolerance: exercise.tolerance,
+          selectedAnswerIndex: selectedAnswerIndex!,
+          correctAnswerIndex: exercise.correctAnswerIndex!
+        });
+      } else {
+        // Slider validation
+        response = await equalizingService.validateEqualizingAnswer({
+          exerciseId: exercise.id,
+          userFrequency,
+          correctFrequency: exercise.targetFrequency,
+          tolerance: exercise.tolerance
+        });
+      }
 
       setValidationResponse(response);
       setIsCorrect(response.isCorrect);
@@ -302,16 +264,6 @@ const EqualizingExercise: React.FC = () => {
     setShowModal(false);
   };
 
-  const getPlaybackStatusText = () => {
-    switch (playbackStatus) {
-      case 'playing-original': return 'Playing original sound...';
-      case 'pausing': return 'Pause (comparing)...';
-      case 'playing-eq': return 'Playing EQ\'d sound...';
-      case 'finished': return 'Finished - Adjust the slider to match the affected frequency!';
-      default: return 'Click Play to compare original vs EQ\'d sound';
-    }
-  };
-
   const formatFrequency = (freq: number) => {
     return `${Math.round(freq)} Hz`;
   };
@@ -324,7 +276,7 @@ const EqualizingExercise: React.FC = () => {
             <IonButtons slot="start">
               <IonBackButton defaultHref={`/difficulty/equalizing`} />
             </IonButtons>
-            <IonTitle>Equalizing Exercise</IonTitle>
+            <IonTitle>EQ Exercise</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
@@ -345,7 +297,7 @@ const EqualizingExercise: React.FC = () => {
             <IonButtons slot="start">
               <IonBackButton defaultHref={`/difficulty/equalizing`} />
             </IonButtons>
-            <IonTitle>Equalizing Exercise</IonTitle>
+            <IonTitle>EQ Exercise</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
@@ -366,7 +318,7 @@ const EqualizingExercise: React.FC = () => {
             <IonBackButton defaultHref={`/difficulty/equalizing`} />
           </IonButtons>
           <IonTitle>
-            Equalizing - {currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}
+            EQ - {currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}
           </IonTitle>
         </IonToolbar>
       </IonHeader>
@@ -388,93 +340,131 @@ const EqualizingExercise: React.FC = () => {
           </IonCardHeader>
           <IonCardContent>
             <div className="sound-info">
-              <p><strong>Sound:</strong> {exercise.sound.displayName}</p>
+              <p><strong>Audio:</strong> {exercise.sound.displayName}</p>
               <p className="sound-description">{exercise.sound.description}</p>
+              <p className="eq-info">
+                <strong>EQ Applied:</strong> {exercise.eqGainDb > 0 ? '+' : ''}{exercise.eqGainDb}dB
+                {exercise.eqGainDb > 0 ? ' boost' : ' cut'} (Q={exercise.qFactor})
+              </p>
             </div>
+
             <div className="audio-controls">
               <IonButton
                 size="large"
                 fill="outline"
                 className="play-button"
-                onClick={playSequentialEQComparison}
-                disabled={isPlaying}
+                onClick={isPlaying ? stopAudio : playAudio}
+                disabled={!audioRef.current}
               >
                 <IonIcon icon={playOutline} slot="start" />
-                {isPlaying ? 'Playing...' : 'Compare Sounds'}
+                {isPlaying ? 'Stop Audio' : 'Play Audio'}
               </IonButton>
+
+              {/* EQ Toggle */}
+              {showEQToggle && (
+                <IonItem>
+                  <IonIcon icon={swapHorizontal} slot="start" />
+                  <IonLabel>EQ Toggle - {useEQ ? 'ON' : 'OFF'}</IonLabel>
+                  <IonToggle
+                    checked={useEQ}
+                    onIonChange={(e) => setUseEQ(e.detail.checked)}
+                    disabled={!isPlaying}
+                    color="primary"
+                  />
+                </IonItem>
+              )}
+
               <p className="playback-status">
-                <IonIcon icon={radio} /> {getPlaybackStatusText()}
+                <IonIcon icon={radio} />
+                {isPlaying ? (useEQ ? 'Playing with EQ applied' : 'Playing original (no EQ)') : 'Click play to hear the audio'}
               </p>
             </div>
           </IonCardContent>
         </IonCard>
 
-        {/* Frequency slider */}
-        <IonCard className="frequency-card">
-          <IonCardContent>
-            <div className="frequency-header">
-              <h3>Adjust the slider to the affected frequency:</h3>
-              <IonBadge color="primary" className="frequency-display">
-                {formatFrequency(userFrequency)}
-              </IonBadge>
-            </div>
-
-            <div className="frequency-slider">
-              <div className="slider-labels">
-                <span className="slider-label-left">0 Hz</span>
-                <span className="slider-label-right">2000 Hz</span>
+        {/* Answer interface */}
+        {exercise.answerType === 'multiple-choice' ? (
+          /* Multiple Choice Interface */
+          <IonCard className="answer-card">
+            <IonCardContent>
+              <h3>Select the affected frequency:</h3>
+              <IonGrid>
+                {exercise.options?.map((option, index) => (
+                  <IonRow key={index}>
+                    <IonCol>
+                      <IonButton
+                        expand="block"
+                        fill={selectedAnswerIndex === index ? "solid" : "outline"}
+                        color={selectedAnswerIndex === index ? "primary" : "medium"}
+                        onClick={() => handleAnswerSelection(index)}
+                        disabled={isAnswered}
+                        className="frequency-option"
+                      >
+                        {formatFrequency(option)}
+                      </IonButton>
+                    </IonCol>
+                  </IonRow>
+                ))}
+              </IonGrid>
+            </IonCardContent>
+          </IonCard>
+        ) : (
+          /* Slider Interface */
+          <IonCard className="frequency-card">
+            <IonCardContent>
+              <div className="frequency-header">
+                <h3>Adjust the slider to the affected frequency:</h3>
+                <IonBadge color="primary" className="frequency-display">
+                  {formatFrequency(userFrequency)}
+                </IonBadge>
               </div>
-              <IonRange
-                pin={true}
-                pinFormatter={(value: number) => formatFrequency(value)}
-                min={0}
-                max={2000}
-                step={50}
-                value={userFrequency}
-                onIonChange={e => setUserFrequency(e.detail.value as number)}
-                disabled={isAnswered}
-                color="primary"
-                className="full-width-slider"
-              />
 
-              {/* Acceptance range visualization after answering */}
-              {isAnswered && validationResponse && (
-                <div className="acceptance-range">
-                  <div
-                    className="range-bar"
-                    style={{
-                      left: `${(validationResponse.acceptanceRangeMin / 2000) * 100}%`,
-                      width: `${((validationResponse.acceptanceRangeMax - validationResponse.acceptanceRangeMin) / 2000) * 100}%`,
-                    }}
-                  />
-                  <div
-                    className="correct-frequency-marker"
-                    style={{
-                      left: `${(exercise.targetFrequency / 2000) * 100}%`,
-                    }}
-                  />
-                  <div
-                    className="user-frequency-marker"
-                    style={{
-                      left: `${(userFrequency / 2000) * 100}%`,
-                    }}
-                  />
+              <div className="frequency-slider">
+                <div className="slider-labels">
+                  <span className="slider-label-left">0 Hz</span>
+                  <span className="slider-label-right">2000 Hz</span>
                 </div>
-              )}
-            </div>
+                <IonRange
+                  pin={true}
+                  pinFormatter={(value: number) => formatFrequency(value)}
+                  min={0}
+                  max={2000}
+                  step={50}
+                  value={userFrequency}
+                  onIonChange={e => setUserFrequency(e.detail.value as number)}
+                  disabled={isAnswered}
+                  color="primary"
+                  className="full-width-slider"
+                />
 
-            <div className="test-controls">
-              <IonButton
-                size="small"
-                fill="clear"
-                onClick={() => playTestFrequency(userFrequency)}
-                disabled={isAnswered || isPlaying}
-              >
-                Test Your Setting
-              </IonButton>
-            </div>
-          </IonCardContent>
-        </IonCard>
+                {/* Show result visualization after answering */}
+                {isAnswered && validationResponse && (
+                  <div className="acceptance-range">
+                    <div
+                      className="range-bar"
+                      style={{
+                        left: `${(validationResponse.acceptanceRangeMin / 2000) * 100}%`,
+                        width: `${((validationResponse.acceptanceRangeMax - validationResponse.acceptanceRangeMin) / 2000) * 100}%`,
+                      }}
+                    />
+                    <div
+                      className="correct-frequency-marker"
+                      style={{
+                        left: `${(exercise.targetFrequency / 2000) * 100}%`,
+                      }}
+                    />
+                    <div
+                      className="user-frequency-marker"
+                      style={{
+                        left: `${(userFrequency / 2000) * 100}%`,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </IonCardContent>
+          </IonCard>
+        )}
 
         {/* Submit button */}
         {!isAnswered && (
@@ -482,12 +472,15 @@ const EqualizingExercise: React.FC = () => {
             expand="block"
             onClick={handleSubmitAnswer}
             className="submit-button"
-            disabled={playbackStatus === 'ready'}
+            disabled={
+              exercise.answerType === 'multiple-choice'
+                ? selectedAnswerIndex === null
+                : !showEQToggle
+            }
           >
             Submit Answer
           </IonButton>
         )}
-
 
         {/* Exercise Completion Modal */}
         <ExerciseCompletionModal
@@ -498,9 +491,13 @@ const EqualizingExercise: React.FC = () => {
           message={modalMessage}
           score={score}
           pointsEarned={exercise?.points}
-          correctAnswer={`${exercise?.sound?.displayName} (${exercise?.targetFrequency}Hz, ${exercise?.isBoost ? '+' : ''}${exercise?.eqGainDb}dB)`}
+          correctAnswer={`${formatFrequency(exercise?.targetFrequency)} (${exercise?.eqGainDb > 0 ? '+' : ''}${exercise?.eqGainDb}dB)`}
           showNextButton={isAnswered}
-          userGuess={formatFrequency(userFrequency)}
+          userGuess={
+            exercise.answerType === 'multiple-choice'
+              ? (selectedAnswerIndex !== null ? formatFrequency(exercise.options![selectedAnswerIndex]) : 'No selection')
+              : formatFrequency(userFrequency)
+          }
           accuracy={accuracy}
           validationDetails={validationResponse}
         />
@@ -509,4 +506,4 @@ const EqualizingExercise: React.FC = () => {
   );
 };
 
-export default EqualizingExercise;
+export default EqualizingExercisePage;

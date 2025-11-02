@@ -356,18 +356,23 @@ export interface EqualizingExercise {
   question: string;
   sound: {
     type: string;
-    frequency: number;
+    frequency?: number;
+    filename?: string;
     displayName: string;
     description: string;
   };
   targetFrequency: number;
+  filterType: string; // lowpass, highpass, bandpass, notch
   eqGainDb: number;
   isBoost: boolean;
   tolerance: number;
   qFactor: number;
   points: number;
   difficultyInfo: string;
-  eqDescription: string;
+  eqDescription?: string;
+  answerType: 'slider' | 'multiple-choice';
+  options?: number[];
+  correctAnswerIndex?: number;
 }
 
 export interface EqualizingValidationResponse {
@@ -391,17 +396,29 @@ export const equalizingService = {
 
   validateEqualizingAnswer: async (data: {
     exerciseId: string;
-    userFrequency: number;
+    userFrequency?: number;
     correctFrequency: number;
     tolerance: number;
+    selectedAnswerIndex?: number;
+    correctAnswerIndex?: number;
   }): Promise<EqualizingValidationResponse> => {
     // Map parameters to what the backend expects
-    const backendData = {
+    const backendData: any = {
       exerciseId: data.exerciseId,
-      userAnswer: data.userFrequency,
       correctAnswer: data.correctFrequency,
       tolerance: data.tolerance
     };
+
+    // Add appropriate validation data based on answer type
+    if (data.selectedAnswerIndex !== undefined && data.correctAnswerIndex !== undefined) {
+      // Multiple choice validation
+      backendData.selectedAnswerIndex = data.selectedAnswerIndex;
+      backendData.correctAnswerIndex = data.correctAnswerIndex;
+    } else if (data.userFrequency !== undefined) {
+      // Slider validation
+      backendData.userAnswer = data.userFrequency;
+    }
+
     const response = await api.post<EqualizingValidationResponse>('/exercise/validate/equalizing', backendData);
     return response.data;
   },
