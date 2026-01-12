@@ -26,13 +26,13 @@ import {
 } from '@ionic/react';
 import { playOutline, checkmarkCircle, closeCircle, radio, musicalNote, swapHorizontal } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
-import { equalizingService, EqualizingExercise } from '../services/api';
+import { filtersService, FiltersExercise } from '../services/api';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
-import './EqualizingExercise.css';
+import './FiltersExercise.css';
 
-const EqualizingExercisePage: React.FC = () => {
+const FiltersExercisePage: React.FC = () => {
   const { difficulty } = useParams<{ difficulty: string }>();
-  const [exercise, setExercise] = useState<EqualizingExercise | null>(null);
+  const [exercise, setExercise] = useState<FiltersExercise | null>(null);
   const [userFrequency, setUserFrequency] = useState<number>(1000);
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -45,8 +45,8 @@ const EqualizingExercisePage: React.FC = () => {
   const [questionCount, setQuestionCount] = useState(0);
   const [accuracy, setAccuracy] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showEQToggle, setShowEQToggle] = useState(false);
-  const [useEQ, setUseEQ] = useState(false);
+  const [showFilterToggle, setShowFilterToggle] = useState(false);
+  const [useFilter, setUseFilter] = useState(false);
   const [validationResponse, setValidationResponse] = useState<any>(null);
 
   // Single Audio with VERY Dramatic Web Audio Filter
@@ -95,29 +95,27 @@ const EqualizingExercisePage: React.FC = () => {
     loadNewExercise();
   }, []);
 
-  // Handle EQ toggle - enable/disable Web Audio EQ
+  // Handle Filter toggle - enable/disable Web Audio filter
   useEffect(() => {
     if (filterRef.current && isPlaying) {
-      if (useEQ) {
-        // Apply EQ effect using peaking filter for boost/cut
+      if (useFilter) {
+        // Apply filter effect
         filterRef.current.frequency.value = exercise?.targetFrequency || 1000;
-        filterRef.current.type = 'peaking'; // Use peaking for EQ boost/cut
-        filterRef.current.Q.value = exercise?.qFactor || 8.0;
-        filterRef.current.gain.value = exercise?.eqGainDb || 0; // Apply the gain (boost/cut)
+        filterRef.current.type = (exercise?.filterType as BiquadFilterType) || 'lowpass';
+        filterRef.current.Q.value = 8.0; // Noticeable but not extreme filter
       } else {
-        // Bypass EQ by using allpass type (passes all frequencies unchanged)
+        // Bypass filter by using allpass type (passes all frequencies unchanged)
         filterRef.current.type = 'allpass';
         filterRef.current.frequency.value = 1000;
         filterRef.current.Q.value = 0.1;
-        filterRef.current.gain.value = 0;
       }
     }
-  }, [useEQ, exercise?.targetFrequency, exercise?.eqGainDb, exercise?.qFactor, isPlaying]);
+  }, [useFilter, exercise?.filterType, exercise?.targetFrequency, isPlaying]);
 
   const loadNewExercise = async () => {
     setLoading(true);
     try {
-      const response = await equalizingService.getEqualizingExercise(currentDifficulty);
+      const response = await filtersService.getFiltersExercise(currentDifficulty);
       setExercise(response);
 
       // Reset states
@@ -126,8 +124,8 @@ const EqualizingExercisePage: React.FC = () => {
       setIsAnswered(false);
       setIsCorrect(false);
       setAccuracy(0);
-      setShowEQToggle(false);
-      setUseEQ(false); // This will trigger the filter reset in the useEffect
+      setShowFilterToggle(false);
+      setUseFilter(false); // This will trigger the filter reset in the useEffect
       setValidationResponse(null);
       setQuestionCount(prev => prev + 1);
 
@@ -185,7 +183,7 @@ const EqualizingExercisePage: React.FC = () => {
 
       setIsPlaying(true);
       await audioRef.current.play();
-      setShowEQToggle(true);
+      setShowFilterToggle(true);
 
       // Auto-stop after 5 seconds for demo
       setTimeout(() => {
@@ -225,16 +223,17 @@ const EqualizingExercisePage: React.FC = () => {
 
       if (exercise.answerType === 'multiple-choice') {
         // Multiple choice validation
-        response = await equalizingService.validateEqualizingAnswer({
+        response = await filtersService.validateFiltersAnswer({
           exerciseId: exercise.id,
           correctFrequency: exercise.targetFrequency,
           tolerance: exercise.tolerance,
           selectedAnswerIndex: selectedAnswerIndex!,
-          correctAnswerIndex: exercise.correctAnswerIndex!
+          correctAnswerIndex: exercise.correctAnswerIndex!,
+          correctAnswer: exercise.correctAnswer
         });
       } else {
         // Slider validation
-        response = await equalizingService.validateEqualizingAnswer({
+        response = await filtersService.validateFiltersAnswer({
           exerciseId: exercise.id,
           userFrequency,
           correctFrequency: exercise.targetFrequency,
@@ -276,9 +275,9 @@ const EqualizingExercisePage: React.FC = () => {
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
-              <IonBackButton defaultHref={`/difficulty/equalizing`} />
+              <IonBackButton defaultHref={`/difficulty/filters`} />
             </IonButtons>
-            <IonTitle>EQ Exercise</IonTitle>
+            <IonTitle>Filters Exercise</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
@@ -297,9 +296,9 @@ const EqualizingExercisePage: React.FC = () => {
         <IonHeader>
           <IonToolbar>
             <IonButtons slot="start">
-              <IonBackButton defaultHref={`/difficulty/equalizing`} />
+              <IonBackButton defaultHref={`/difficulty/filters`} />
             </IonButtons>
-            <IonTitle>EQ Exercise</IonTitle>
+            <IonTitle>Filters Exercise</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
@@ -317,10 +316,10 @@ const EqualizingExercisePage: React.FC = () => {
       <IonHeader>
         <IonToolbar>
           <IonButtons slot="start">
-            <IonBackButton defaultHref={`/difficulty/equalizing`} />
+            <IonBackButton defaultHref={`/difficulty/filters`} />
           </IonButtons>
           <IonTitle>
-            EQ - {currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}
+            Filters - {currentDifficulty.charAt(0).toUpperCase() + currentDifficulty.slice(1)}
           </IonTitle>
         </IonToolbar>
       </IonHeader>
@@ -353,23 +352,21 @@ const EqualizingExercisePage: React.FC = () => {
                 {isPlaying ? 'Stop Audio' : 'Play Audio'}
               </IonButton>
 
-              {/* EQ Toggle */}
-              {showEQToggle && (
-                <IonItem>
-                  <IonIcon icon={swapHorizontal} slot="start" />
-                  <IonLabel>EQ Toggle - {useEQ ? 'ON' : 'OFF'}</IonLabel>
-                  <IonToggle
-                    checked={useEQ}
-                    onIonChange={(e) => setUseEQ(e.detail.checked)}
-                    disabled={!isPlaying}
-                    color="primary"
-                  />
-                </IonItem>
-              )}
+              {/* Filter Toggle */}
+              <IonItem>
+                <IonIcon icon={swapHorizontal} slot="start" />
+                <IonLabel>Filter Toggle - {useFilter ? 'ON' : 'OFF'}</IonLabel>
+                <IonToggle
+                  checked={useFilter}
+                  onIonChange={(e) => setUseFilter(e.detail.checked)}
+                  disabled={!isPlaying}
+                  color="primary"
+                />
+              </IonItem>
 
               <p className="playback-status">
                 <IonIcon icon={radio} />
-                {isPlaying ? (useEQ ? 'Playing with EQ applied' : 'Playing original (no EQ)') : 'Click play to hear the audio'}
+                {isPlaying ? (useFilter ? 'Playing with filter applied' : 'Playing original (no filter)') : 'Click play to hear the audio'}
               </p>
             </div>
           </IonCardContent>
@@ -380,7 +377,7 @@ const EqualizingExercisePage: React.FC = () => {
           /* Multiple Choice Interface */
           <IonCard className="answer-card">
             <IonCardContent>
-              <h3>Select the EQ frequency and gain:</h3>
+              <h3>Select the filter type and frequency:</h3>
               <IonGrid>
                 {exercise.options?.map((option, index) => (
                   <IonRow key={index}>
@@ -391,7 +388,7 @@ const EqualizingExercisePage: React.FC = () => {
                         color={selectedAnswerIndex === index ? "primary" : "medium"}
                         onClick={() => handleAnswerSelection(index)}
                         disabled={isAnswered}
-                        className="eq-option"
+                        className="filter-option"
                       >
                         {option.display}
                       </IonButton>
@@ -406,7 +403,7 @@ const EqualizingExercisePage: React.FC = () => {
           <IonCard className="frequency-card">
             <IonCardContent>
               <div className="frequency-header">
-                <h3>Adjust the slider to the affected frequency:</h3>
+                <h3>Adjust the slider to the filter cutoff frequency:</h3>
                 <IonBadge color="primary" className="frequency-display">
                   {formatFrequency(userFrequency)}
                 </IonBadge>
@@ -468,7 +465,7 @@ const EqualizingExercisePage: React.FC = () => {
             disabled={
               exercise.answerType === 'multiple-choice'
                 ? selectedAnswerIndex === null
-                : !showEQToggle
+                : !showFilterToggle
             }
           >
             Submit Answer
@@ -484,7 +481,7 @@ const EqualizingExercisePage: React.FC = () => {
           message={modalMessage}
           score={score}
           pointsEarned={exercise?.points}
-          correctAnswer={exercise?.correctAnswer || `${formatFrequency(exercise?.targetFrequency)} (${exercise?.eqGainDb > 0 ? '+' : ''}${exercise?.eqGainDb}dB)`}
+          correctAnswer={exercise?.correctAnswer || `${formatFrequency(exercise?.targetFrequency)} (${exercise?.filterType})`}
           showNextButton={isAnswered}
           userGuess={
             exercise.answerType === 'multiple-choice'
@@ -499,4 +496,4 @@ const EqualizingExercisePage: React.FC = () => {
   );
 };
 
-export default EqualizingExercisePage;
+export default FiltersExercisePage;

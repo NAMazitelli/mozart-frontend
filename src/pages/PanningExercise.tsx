@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -23,9 +23,10 @@ import {
   IonItem,
   IonSegment,
   IonSegmentButton,
-  IonLabel
+  IonLabel,
+  IonToggle
 } from '@ionic/react';
-import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, headset } from 'ionicons/icons';
+import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, headset, swapHorizontal } from 'ionicons/icons';
 import { useParams, useHistory } from 'react-router-dom';
 import { panningService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -62,21 +63,34 @@ const PanningExercise: React.FC = () => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [accuracy, setAccuracy] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentOscillator, setCurrentOscillator] = useState<OscillatorNode | null>(null);
+  const [showPanToggle, setShowPanToggle] = useState(false);
+  const [usePanning, setUsePanning] = useState(false);
 
-  // Initialize Audio Context
+  // Audio references for continuous playback
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const pannerRef = useRef<StereoPannerNode | null>(null);
+
+  // Initialize Audio Context and HTML Audio
   useEffect(() => {
-    const initAudio = () => {
+    const initAudio = async () => {
       try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        setAudioContext(ctx);
+        // Create Audio Context
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        // Create single audio element
+        audioRef.current = new Audio();
+        audioRef.current.loop = true;
+        audioRef.current.crossOrigin = 'anonymous';
+
       } catch (error) {
         console.error('Error initializing audio context:', error);
       }
@@ -85,8 +99,12 @@ const PanningExercise: React.FC = () => {
     initAudio();
 
     return () => {
-      if (audioContext) {
-        audioContext.close();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
       }
     };
   }, []);
@@ -99,6 +117,19 @@ const PanningExercise: React.FC = () => {
     loadNewExercise();
   }, []);
 
+  // Handle panning toggle - enable/disable panning effect
+  useEffect(() => {
+    if (pannerRef.current && isPlaying) {
+      if (usePanning) {
+        // Apply the exercise's correct panning
+        pannerRef.current.pan.value = exercise?.correctPanValue || 0;
+      } else {
+        // Reset to center (no panning)
+        pannerRef.current.pan.value = 0;
+      }
+    }
+  }, [usePanning, exercise?.correctPanValue, isPlaying]);
+
   const loadNewExercise = async () => {
     setLoading(true);
     try {
@@ -109,7 +140,15 @@ const PanningExercise: React.FC = () => {
       setIsAnswered(false);
       setIsCorrect(false);
       setAccuracy(0);
+      setShowPanToggle(false);
+      setUsePanning(false);
       setQuestionCount(prev => prev + 1);
+
+      // Setup piano loop audio source
+      if (audioRef.current) {
+        const audioSrc = '/sounds/piano-loop.mp3';
+        audioRef.current.src = audioSrc;
+      }
     } catch (error) {
       console.error('Panning - Error loading exercise:', error);
       logApiCall('Panning', 'panning', currentDifficulty, true);
@@ -120,63 +159,66 @@ const PanningExercise: React.FC = () => {
     }
   };
 
-  const playPannedSound = (panValue: number = exercise?.correctPanValue || 0) => {
-    if (!audioContext || !exercise) {
-      console.error('Audio context or exercise not available');
-      return;
-    }
+  const playAudio = async () => {
+    if (!audioRef.current || !audioContextRef.current || isPlaying || !exercise) return;
 
-    // Stop any currently playing sound
-    if (currentOscillator) {
-      currentOscillator.stop();
-      setCurrentOscillator(null);
-    }
+    try {
+      // Resume audio context if suspended
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
 
-    // Resume audio context if suspended
-    if (audioContext.state === 'suspended') {
-      audioContext.resume();
-    }
+      // Setup Web Audio routing if not already connected
+      if (!sourceNodeRef.current) {
+        // Create source from audio element
+        sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
 
-    setIsPlaying(true);
+        // Create gain and panner nodes
+        gainRef.current = audioContextRef.current.createGain();
+        pannerRef.current = audioContextRef.current.createStereoPanner();
 
-    // Create oscillator based on sound type
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    const pannerNode = audioContext.createStereoPanner();
+        // Configure gain
+        gainRef.current.gain.value = 1.0;
 
-    // Connect nodes: oscillator -> gain -> panner -> destination
-    oscillator.connect(gainNode);
-    gainNode.connect(pannerNode);
-    pannerNode.connect(audioContext.destination);
+        // Start with no panning (center)
+        pannerRef.current.pan.value = 0;
 
-    // Configure oscillator
-    oscillator.type = exercise.sound.type as OscillatorType;
-    oscillator.frequency.setValueAtTime(exercise.sound.frequency, audioContext.currentTime);
+        // Connect: source -> gain -> panner -> destination
+        sourceNodeRef.current.connect(gainRef.current);
+        gainRef.current.connect(pannerRef.current);
+        pannerRef.current.connect(audioContextRef.current.destination);
+      }
 
-    // Configure gain (volume envelope)
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.8);
+      setIsPlaying(true);
+      setShowPanToggle(true);
+      await audioRef.current.play();
 
-    // Set panning (-1 = left, 0 = center, 1 = right)
-    pannerNode.pan.setValueAtTime(panValue, audioContext.currentTime);
+      // Auto-stop after 10 seconds for demo
+      setTimeout(() => {
+        if (audioRef.current && isPlaying) {
+          stopAudio();
+        }
+      }, 10000);
 
-    // Play sound
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 2);
-
-    setCurrentOscillator(oscillator);
-
-    oscillator.onended = () => {
+    } catch (error) {
+      console.error('Error playing audio:', error);
       setIsPlaying(false);
-      setCurrentOscillator(null);
-    };
+    }
+  };
+
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
   };
 
   const handleSubmitAnswer = async () => {
     if (isAnswered || !exercise) return;
 
     setIsAnswered(true);
+    stopAudio();
 
     try {
       // For guest users, calculate validation locally without API call
@@ -345,23 +387,36 @@ const PanningExercise: React.FC = () => {
             <IonCardTitle>{exercise.question}</IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            <div className="sound-info">
-              <p><strong>Sound:</strong> {exercise.sound.displayName}</p>
-              <p className="sound-description">{exercise.sound.description}</p>
-            </div>
             <div className="audio-controls">
               <IonButton
                 size="large"
                 fill="outline"
                 className="play-button"
-                onClick={() => playPannedSound()}
-                disabled={isPlaying}
+                onClick={isPlaying ? stopAudio : playAudio}
+                disabled={!exercise}
               >
                 <IonIcon icon={playOutline} slot="start" />
-                {isPlaying ? 'Playing...' : 'Play Sound'}
+                {isPlaying ? 'Stop Audio' : 'Play Audio'}
               </IonButton>
+
+              {/* Panning Toggle */}
+              <IonItem>
+                <IonIcon icon={swapHorizontal} slot="start" />
+                <IonLabel>Panning Toggle - {usePanning ? 'ON' : 'OFF'}</IonLabel>
+                <IonToggle
+                  checked={usePanning}
+                  onIonChange={(e) => setUsePanning(e.detail.checked)}
+                  disabled={!isPlaying}
+                  color="primary"
+                />
+              </IonItem>
+
               <p className="audio-hint">
                 <IonIcon icon={headset} /> Use headphones for best results
+              </p>
+              <p className="playback-status">
+                <IonIcon icon={volumeHighOutline} />
+                {isPlaying ? (usePanning ? 'Playing with panning applied' : 'Playing original (centered)') : 'Click play to hear the audio'}
               </p>
             </div>
           </IonCardContent>
@@ -397,14 +452,9 @@ const PanningExercise: React.FC = () => {
             </div>
 
             <div className="test-controls">
-              <IonButton
-                size="small"
-                fill="clear"
-                onClick={() => playPannedSound(userPanValue)}
-                disabled={isAnswered || isPlaying}
-              >
-                Test Your Setting
-              </IonButton>
+              <p className="test-hint">
+                Use the toggle above to compare original vs. panned audio while adjusting the slider
+              </p>
             </div>
           </IonCardContent>
         </IonCard>
@@ -434,8 +484,8 @@ const PanningExercise: React.FC = () => {
           showNextButton={isAnswered}
           userGuess={formatPanValue(userPanValue)}
           accuracy={accuracy}
-          onPlayCorrectAnswer={() => playPannedSound(exercise?.correctPanValue || 0)}
-          isPlaying={isPlaying}
+          onPlayCorrectAnswer={undefined}
+          isPlaying={false}
         />
       </IonContent>
     </IonPage>

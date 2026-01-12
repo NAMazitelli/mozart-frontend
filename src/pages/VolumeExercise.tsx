@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -23,9 +23,10 @@ import {
   IonLabel,
   IonBadge,
   IonRange,
-  IonItem
+  IonItem,
+  IonToggle
 } from '@ionic/react';
-import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, musicalNote } from 'ionicons/icons';
+import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, musicalNote, swapHorizontal } from 'ionicons/icons';
 import { volumeService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
@@ -57,7 +58,6 @@ const VolumeExercise: React.FC = () => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   const [score, setScore] = useState(0);
@@ -65,24 +65,41 @@ const VolumeExercise: React.FC = () => {
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [accuracy, setAccuracy] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackStatus, setPlaybackStatus] = useState<'ready' | 'playing-first' | 'pausing' | 'playing-second' | 'finished'>('ready');
+  const [showVolumeToggle, setShowVolumeToggle] = useState(false);
+  const [useVolumeDifference, setUseVolumeDifference] = useState(false);
 
-  // Initialize Audio Context
+  // Audio references for continuous playback
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+
+  // Initialize Audio Context and HTML Audio
   useEffect(() => {
-    const initAudio = () => {
+    const initAudio = async () => {
       try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        setAudioContext(ctx);
+        // Create Audio Context
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        // Create single audio element
+        audioRef.current = new Audio();
+        audioRef.current.loop = true;
+        audioRef.current.crossOrigin = 'anonymous';
+
       } catch (error) {
-        console.error('Error initializing audio context:', error);
+        console.error('Error initializing audio:', error);
       }
     };
 
     initAudio();
 
     return () => {
-      if (audioContext) {
-        audioContext.close();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
       }
     };
   }, []);
@@ -99,6 +116,22 @@ const VolumeExercise: React.FC = () => {
     }
   }, [difficulty]);
 
+  // Handle volume toggle - enable/disable volume difference
+  useEffect(() => {
+    if (gainRef.current && isPlaying && exercise) {
+      const baseVolume = 0.3;
+      if (useVolumeDifference) {
+        // Apply the exercise's volume difference
+        const linearGain = baseVolume * Math.pow(10, exercise.volumeDifference / 20);
+        gainRef.current.gain.setValueAtTime(linearGain, audioContextRef.current!.currentTime);
+      } else {
+        // Reset to reference volume (no difference)
+        const linearGain = baseVolume * Math.pow(10, exercise.referenceGain / 20);
+        gainRef.current.gain.setValueAtTime(linearGain, audioContextRef.current!.currentTime);
+      }
+    }
+  }, [useVolumeDifference, exercise?.volumeDifference, exercise?.referenceGain, isPlaying]);
+
   const loadNewExercise = async () => {
     setLoading(true);
     try {
@@ -108,8 +141,15 @@ const VolumeExercise: React.FC = () => {
       setIsAnswered(false);
       setIsCorrect(false);
       setAccuracy(0);
-      setPlaybackStatus('ready');
+      setShowVolumeToggle(false);
+      setUseVolumeDifference(false);
       setQuestionCount(prev => prev + 1);
+
+      // Setup piano loop audio source
+      if (audioRef.current) {
+        const audioSrc = '/sounds/piano-loop.mp3';
+        audioRef.current.src = audioSrc;
+      }
     } catch (error) {
       console.error('Error loading exercise:', error);
       setModalMessage('Failed to load exercise. Please try again.');
@@ -119,82 +159,63 @@ const VolumeExercise: React.FC = () => {
     }
   };
 
-  const playSequentialNotes = async () => {
-    if (!audioContext || !exercise || isPlaying) {
-      console.error('Audio context, exercise not available, or already playing');
-      return;
-    }
+  const playAudio = async () => {
+    if (!audioRef.current || !audioContextRef.current || isPlaying || !exercise) return;
 
-    // Resume audio context if suspended
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
-
-    setIsPlaying(true);
-    setPlaybackStatus('playing-first');
-
-    // Play first note (reference volume)
-    await playNote(exercise.note.frequency, exercise.referenceGain, 1.5);
-
-    // 1 second pause
-    setPlaybackStatus('pausing');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Play second note (different volume)
-    setPlaybackStatus('playing-second');
-    await playNote(exercise.note.frequency, exercise.secondGain, 1.5);
-
-    setPlaybackStatus('finished');
-    setIsPlaying(false);
-  };
-
-  const playNote = (frequency: number, gainDb: number, duration: number): Promise<void> => {
-    return new Promise((resolve) => {
-      if (!audioContext) {
-        resolve();
-        return;
+    try {
+      // Resume audio context if suspended
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
       }
 
-      // Create oscillator and gain node
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+      // Setup Web Audio routing if not already connected
+      if (!sourceNodeRef.current) {
+        // Create source from audio element
+        sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
 
-      // Connect nodes
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+        // Create gain node
+        gainRef.current = audioContextRef.current.createGain();
 
-      // Configure oscillator
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+        // Start with reference volume (no difference)
+        const baseVolume = 1.0;
+        const linearGain = baseVolume * Math.pow(10, exercise.referenceGain / 20);
+        gainRef.current.gain.value = linearGain;
 
-      // Convert dB to linear gain: gain = 10^(dB/20)
-      const baseVolume = 0.3; // Base volume level
-      const linearGain = baseVolume * Math.pow(10, gainDb / 20);
+        // Connect: source -> gain -> destination
+        sourceNodeRef.current.connect(gainRef.current);
+        gainRef.current.connect(audioContextRef.current.destination);
+      }
 
-      console.log(`Volume - Playing note: ${gainDb}dB -> ${linearGain.toFixed(3)} linear gain`);
+      setIsPlaying(true);
+      setShowVolumeToggle(true);
+      await audioRef.current.play();
 
-      // Configure gain (volume envelope)
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(linearGain, audioContext.currentTime + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration - 0.05);
+      // Auto-stop after 10 seconds for demo
+      setTimeout(() => {
+        if (audioRef.current && isPlaying) {
+          stopAudio();
+        }
+      }, 10000);
 
-      // Play note
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + duration);
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setIsPlaying(false);
+    }
+  };
 
-      oscillator.onended = () => {
-        resolve();
-      };
-
-      // Fallback in case onended doesn't fire
-      setTimeout(() => resolve(), duration * 1000 + 100);
-    });
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    }
   };
 
   const handleSubmitAnswer = async () => {
     if (isAnswered || !exercise) return;
 
     setIsAnswered(true);
+    stopAudio();
 
     try {
       // For guest users, calculate validation locally without API call
@@ -257,15 +278,6 @@ const VolumeExercise: React.FC = () => {
     return `${value > 0 ? '+' : ''}${value} dB`;
   };
 
-  const getPlaybackStatusText = () => {
-    switch (playbackStatus) {
-      case 'playing-first': return 'Playing first note...';
-      case 'pausing': return 'Pause (listening)...';
-      case 'playing-second': return 'Playing second note...';
-      case 'finished': return 'Finished - Make your guess!';
-      default: return 'Click Play to hear both notes';
-    }
-  };
 
   if (loading) {
     return (
@@ -371,22 +383,33 @@ const VolumeExercise: React.FC = () => {
             <IonCardTitle>{exercise.question}</IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            <div className="note-info">
-              <p><strong>Note:</strong> {exercise.note.displayName} ({Math.round(exercise.note.frequency)} Hz)</p>
-            </div>
             <div className="audio-controls">
               <IonButton
                 size="large"
                 fill="outline"
                 className="play-button"
-                onClick={playSequentialNotes}
-                disabled={isPlaying}
+                onClick={isPlaying ? stopAudio : playAudio}
+                disabled={!exercise}
               >
                 <IonIcon icon={playOutline} slot="start" />
-                {isPlaying ? 'Playing...' : 'Play Both Notes'}
+                {isPlaying ? 'Stop Audio' : 'Play Audio'}
               </IonButton>
+
+              {/* Volume Toggle */}
+              <IonItem>
+                <IonIcon icon={swapHorizontal} slot="start" />
+                <IonLabel>Volume Toggle - {useVolumeDifference ? 'ON' : 'OFF'}</IonLabel>
+                <IonToggle
+                  checked={useVolumeDifference}
+                  onIonChange={(e) => setUseVolumeDifference(e.detail.checked)}
+                  disabled={!isPlaying}
+                  color="primary"
+                />
+              </IonItem>
+
               <p className="playback-status">
-                <IonIcon icon={musicalNote} /> {getPlaybackStatusText()}
+                <IonIcon icon={volumeHighOutline} />
+                {isPlaying ? (useVolumeDifference ? 'Playing with volume difference applied' : 'Playing reference volume') : 'Click play to hear the audio'}
               </p>
             </div>
           </IonCardContent>
@@ -430,7 +453,6 @@ const VolumeExercise: React.FC = () => {
             expand="block"
             onClick={handleSubmitAnswer}
             className="submit-button"
-            disabled={playbackStatus === 'ready'}
           >
             Submit Answer
           </IonButton>
