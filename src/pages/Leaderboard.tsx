@@ -33,16 +33,17 @@ import { userApi, LeaderboardEntry, ExerciseLeaderboardEntry } from '../services
 import './Leaderboard.css';
 
 const Leaderboard: React.FC = () => {
-  const [segmentValue, setSegmentValue] = useState<'global' | 'exercise'>('global');
-  const [globalLeaderboard, setGlobalLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [exerciseLeaderboard, setExerciseLeaderboard] = useState<ExerciseLeaderboardEntry[]>([]);
-  const [selectedExerciseType, setSelectedExerciseType] = useState('guess-note');
+  const [segmentValue, setSegmentValue] = useState<'world' | 'personal'>('world');
+  const [worldLeaderboard, setWorldLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [personalLeaderboard, setPersonalLeaderboard] = useState<ExerciseLeaderboardEntry[]>([]);
+  const [selectedExerciseType, setSelectedExerciseType] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
   const [userPosition, setUserPosition] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
   const exerciseTypes = [
+    { value: 'all', label: 'All Exercises' },
     { value: 'guess-note', label: 'Guess Note' },
     { value: 'intervals', label: 'Intervals' },
     { value: 'harmonies', label: 'Harmonies' },
@@ -58,40 +59,60 @@ const Leaderboard: React.FC = () => {
     { value: 'hard', label: 'Hard' }
   ];
 
-  const loadGlobalLeaderboard = async () => {
+  const loadWorldLeaderboard = async () => {
     try {
-      const response = await userApi.getGlobalLeaderboard(50, 0);
-      setGlobalLeaderboard(response.data);
+      // For world leaderboard, we can show either global or filtered by exercise
+      let response;
+      if (selectedExerciseType === 'all') {
+        response = await userApi.getGlobalLeaderboard(50, 0);
+        setWorldLeaderboard(response.data);
 
-      // Get user's position
-      const positionResponse = await userApi.getLeaderboardPosition('global');
-      setUserPosition(positionResponse.data.rank);
+        // Get user's position
+        const positionResponse = await userApi.getLeaderboardPosition('global');
+        setUserPosition(positionResponse.data.rank);
+      } else {
+        response = await userApi.getExerciseLeaderboard(
+          selectedExerciseType,
+          selectedDifficulty || undefined,
+          50,
+          0
+        );
+        setWorldLeaderboard(response.data);
+
+        // Get user's position
+        const positionResponse = await userApi.getLeaderboardPosition(
+          'exercise',
+          selectedExerciseType,
+          selectedDifficulty || undefined
+        );
+        setUserPosition(positionResponse.data.rank);
+      }
     } catch (err) {
-      console.error('Error loading global leaderboard:', err);
-      setError('Failed to load global leaderboard');
+      console.error('Error loading world leaderboard:', err);
+      setError('Failed to load world leaderboard');
     }
   };
 
-  const loadExerciseLeaderboard = async () => {
+  const loadPersonalLeaderboard = async () => {
     try {
-      const response = await userApi.getExerciseLeaderboard(
-        selectedExerciseType,
-        selectedDifficulty || undefined,
-        50,
-        0
-      );
-      setExerciseLeaderboard(response.data);
+      const response = await userApi.getPersonalLeaderboard(50, 0);
+      let filteredData = response.data;
 
-      // Get user's position
-      const positionResponse = await userApi.getLeaderboardPosition(
-        'exercise',
-        selectedExerciseType,
-        selectedDifficulty || undefined
-      );
-      setUserPosition(positionResponse.data.rank);
+      // Filter by exercise type if not 'all'
+      if (selectedExerciseType !== 'all') {
+        filteredData = response.data.filter(entry => entry.exercise_type === selectedExerciseType);
+      }
+
+      // Filter by difficulty if specified
+      if (selectedDifficulty) {
+        filteredData = filteredData.filter(entry => entry.difficulty === selectedDifficulty);
+      }
+
+      setPersonalLeaderboard(filteredData);
+      setUserPosition(null); // No position needed for personal view
     } catch (err) {
-      console.error('Error loading exercise leaderboard:', err);
-      setError('Failed to load exercise leaderboard');
+      console.error('Error loading personal leaderboard:', err);
+      setError('Failed to load personal leaderboard');
     }
   };
 
@@ -100,10 +121,10 @@ const Leaderboard: React.FC = () => {
     setError('');
 
     try {
-      if (segmentValue === 'global') {
-        await loadGlobalLeaderboard();
+      if (segmentValue === 'world') {
+        await loadWorldLeaderboard();
       } else {
-        await loadExerciseLeaderboard();
+        await loadPersonalLeaderboard();
       }
     } catch (err) {
       console.error('Error loading leaderboard:', err);
@@ -215,7 +236,7 @@ const Leaderboard: React.FC = () => {
           <IonRefresherContent />
         </IonRefresher>
 
-        {userPosition && (
+        {userPosition && segmentValue === 'world' && (
           <IonCard>
             <IonCardHeader>
               <IonCardTitle>Your Position</IonCardTitle>
@@ -234,64 +255,69 @@ const Leaderboard: React.FC = () => {
           </IonCard>
         )}
 
-        <IonSegment value={segmentValue} onIonChange={(e) => setSegmentValue(e.detail.value as 'global' | 'exercise')}>
-          <IonSegmentButton value="global">
-            <IonLabel>Global</IonLabel>
+        <IonSegment value={segmentValue} onIonChange={(e) => setSegmentValue(e.detail.value as 'world' | 'personal')}>
+          <IonSegmentButton value="world">
+            <IonLabel>World Leaderboard</IonLabel>
             <IonIcon icon={people} />
           </IonSegmentButton>
-          <IonSegmentButton value="exercise">
-            <IonLabel>Exercise</IonLabel>
-            <IonIcon icon={trophy} />
+          <IonSegmentButton value="personal">
+            <IonLabel>Personal Progress</IonLabel>
+            <IonIcon icon={person} />
           </IonSegmentButton>
         </IonSegment>
 
-        {segmentValue === 'exercise' && (
-          <div className="exercise-filters">
-            <IonItem>
-              <IonLabel>Exercise Type</IonLabel>
-              <IonSelect
-                value={selectedExerciseType}
-                onIonChange={(e) => setSelectedExerciseType(e.detail.value)}
-              >
-                {exerciseTypes.map(type => (
-                  <IonSelectOption key={type.value} value={type.value}>
-                    {type.label}
-                  </IonSelectOption>
-                ))}
-              </IonSelect>
-            </IonItem>
+        {/* Exercise filters - show for both world and personal leaderboards */}
+        <div className="exercise-filters">
+          <IonItem>
+            <IonLabel>Exercise Type</IonLabel>
+            <IonSelect
+              value={selectedExerciseType}
+              onIonChange={(e) => setSelectedExerciseType(e.detail.value)}
+            >
+              {exerciseTypes.map(type => (
+                <IonSelectOption key={type.value} value={type.value}>
+                  {type.label}
+                </IonSelectOption>
+              ))}
+            </IonSelect>
+          </IonItem>
 
-            <IonItem>
-              <IonLabel>Difficulty</IonLabel>
-              <IonSelect
-                value={selectedDifficulty}
-                onIonChange={(e) => setSelectedDifficulty(e.detail.value)}
-              >
-                {difficulties.map(diff => (
-                  <IonSelectOption key={diff.value} value={diff.value}>
-                    {diff.label}
-                  </IonSelectOption>
-                ))}
-              </IonSelect>
-            </IonItem>
-          </div>
-        )}
+          <IonItem>
+            <IonLabel>Difficulty</IonLabel>
+            <IonSelect
+              value={selectedDifficulty}
+              onIonChange={(e) => setSelectedDifficulty(e.detail.value)}
+            >
+              {difficulties.map(difficulty => (
+                <IonSelectOption key={difficulty.value} value={difficulty.value}>
+                  {difficulty.label}
+                </IonSelectOption>
+              ))}
+            </IonSelect>
+          </IonItem>
+        </div>
 
         <IonList>
-          {segmentValue === 'global'
-            ? globalLeaderboard.map((entry, index) => renderLeaderboardItem(entry, index))
-            : exerciseLeaderboard.map((entry, index) => renderLeaderboardItem(entry, index))
+          {segmentValue === 'world'
+            ? worldLeaderboard.map((entry, index) => renderLeaderboardItem(entry, index))
+            : personalLeaderboard.map((entry, index) => renderLeaderboardItem(entry, index))
           }
         </IonList>
 
-        {((segmentValue === 'global' && globalLeaderboard.length === 0) ||
-          (segmentValue === 'exercise' && exerciseLeaderboard.length === 0)) &&
+        {/* Empty state handling */}
+        {((segmentValue === 'world' && worldLeaderboard.length === 0) ||
+          (segmentValue === 'personal' && personalLeaderboard.length === 0)) &&
           !loading && (
             <div className="empty-state">
               <IonIcon icon={trophy} size="large" color="medium" />
               <IonText color="medium">
-                <h3>No rankings yet</h3>
-                <p>Complete some exercises to see leaderboard rankings!</p>
+                <h3>No entries found</h3>
+                <p>
+                  {segmentValue === 'world'
+                    ? 'No leaderboard entries found for the selected filters. Try different exercise types or difficulties.'
+                    : 'Complete some exercises to see your personal progress here!'
+                  }
+                </p>
               </IonText>
             </div>
           )}

@@ -153,6 +153,8 @@ export const userApi = {
     if (difficulty) params.append('difficulty', difficulty);
     return api.get<ExerciseLeaderboardEntry[]>(`/user/leaderboard/exercise/${exerciseType}?${params}`);
   },
+  getPersonalLeaderboard: (limit: number = 50, offset: number = 0) =>
+    api.get<ExerciseLeaderboardEntry[]>(`/user/leaderboard/personal?limit=${limit}&offset=${offset}`),
   getLeaderboardPosition: (type: 'global' | 'exercise', exerciseType?: string, difficulty?: string) => {
     const params = new URLSearchParams({ type });
     if (exerciseType) params.append('exerciseType', exerciseType);
