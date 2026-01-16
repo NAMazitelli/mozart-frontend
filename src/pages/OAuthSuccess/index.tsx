@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { IonContent, IonPage, IonSpinner, IonText } from '@ionic/react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useHistory } from 'react-router-dom';
-import { userApi } from '../services/api';
+import { userApi } from '../../services/api';
 
 const OAuthSuccess: React.FC = () => {
   const { login } = useAuth();

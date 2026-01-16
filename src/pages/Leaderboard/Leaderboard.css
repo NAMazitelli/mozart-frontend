@@ -129,6 +129,35 @@
   }
 }
 
+/* Guest login prompt */
+.guest-login-prompt {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 20px;
+}
+
+.guest-login-prompt ion-card {
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+
+.guest-login-prompt ion-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3em;
+  font-weight: 600;
+}
+
+.guest-login-prompt ion-card-content p {
+  font-size: 1em;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
 /* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
   .exercise-filters {

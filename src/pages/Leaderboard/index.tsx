@@ -26,13 +26,18 @@ import {
   IonCardContent,
   IonCardHeader,
   IonCardTitle,
+  IonButton,
   RefresherEventDetail
 } from '@ionic/react';
-import { trophy, medal, star, people, person } from 'ionicons/icons';
-import { userApi, LeaderboardEntry, ExerciseLeaderboardEntry } from '../services/api';
+import { trophy, medal, star, people, person, logInOutline } from 'ionicons/icons';
+import { userApi, LeaderboardEntry, ExerciseLeaderboardEntry } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { useHistory } from 'react-router-dom';
 import './Leaderboard.css';
 
 const Leaderboard: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const history = useHistory();
   const [segmentValue, setSegmentValue] = useState<'world' | 'personal'>('world');
   const [worldLeaderboard, setWorldLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [personalLeaderboard, setPersonalLeaderboard] = useState<ExerciseLeaderboardEntry[]>([]);
@@ -204,14 +209,26 @@ const Leaderboard: React.FC = () => {
               </div>
 
               {'exercise_type' in entry && (
-                <div className="stat">
-                  <IonText color="tertiary">
-                    <strong>{entry.difficulty}</strong>
-                  </IonText>
-                  <IonText color="medium">
-                    <p>Difficulty</p>
-                  </IonText>
-                </div>
+                <>
+                  <div className="stat">
+                    <IonText color="tertiary">
+                      <strong>
+                        {exerciseTypes.find(et => et.value === entry.exercise_type)?.label || entry.exercise_type}
+                      </strong>
+                    </IonText>
+                    <IonText color="medium">
+                      <p>Exercise</p>
+                    </IonText>
+                  </div>
+                  <div className="stat">
+                    <IonText color="tertiary">
+                      <strong>{entry.difficulty}</strong>
+                    </IonText>
+                    <IonText color="medium">
+                      <p>Difficulty</p>
+                    </IonText>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -219,6 +236,49 @@ const Leaderboard: React.FC = () => {
       </IonItem>
     );
   };
+
+  // Show login prompt for guest users
+  if (!isAuthenticated) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start">
+              <IonBackButton defaultHref="/main" />
+            </IonButtons>
+            <IonTitle>Leaderboard</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+
+        <IonContent fullscreen>
+          <div className="guest-login-prompt">
+            <IonCard>
+              <IonCardHeader>
+                <IonCardTitle>
+                  <IonIcon icon={logInOutline} color="primary" />
+                  <span style={{ marginLeft: '10px' }}>Login Required</span>
+                </IonCardTitle>
+              </IonCardHeader>
+              <IonCardContent>
+                <IonText color="medium">
+                  <p>Log in to see the leaderboard and track your progress!</p>
+                </IonText>
+                <IonButton
+                  fill="solid"
+                  color="primary"
+                  onClick={() => history.push('/login')}
+                  style={{ marginTop: '16px' }}
+                >
+                  <IonIcon icon={logInOutline} slot="start" />
+                  Log In
+                </IonButton>
+              </IonCardContent>
+            </IonCard>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>

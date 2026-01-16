@@ -26,8 +26,9 @@ import {
 } from '@ionic/react';
 import { playOutline, checkmarkCircle, closeCircle, radio, musicalNote, swapHorizontal } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
-import { equalizingService, EqualizingExercise } from '../services/api';
-import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
+import { equalizingService, EqualizingExercise } from '../../services/api';
+import ExerciseCompletionModal from "../../components/ExerciseCompletionModal";
+import { getDifficultyFromUrl, logApiCall, submitExerciseResult } from '../../utils/exerciseUtils';
 import './EqualizingExercise.css';
 
 const EqualizingExercisePage: React.FC = () => {
@@ -56,8 +57,8 @@ const EqualizingExercisePage: React.FC = () => {
   const filterRef = useRef<BiquadFilterNode | null>(null);
   const gainRef = useRef<GainNode | null>(null);
 
-  // Use difficulty from URL params, default to 'easy'
-  const currentDifficulty = difficulty || 'easy';
+  // Use difficulty from URL params with fallback extraction for mobile
+  const currentDifficulty = getDifficultyFromUrl(difficulty, 'Equalizing');
 
   // Initialize Single Audio with Filter Toggle
   useEffect(() => {
@@ -246,13 +247,31 @@ const EqualizingExercisePage: React.FC = () => {
       setIsCorrect(response.isCorrect);
       setAccuracy(response.accuracy);
       setModalMessage(response.message);
+
+      // Submit exercise to update leaderboard and user stats
+      await submitExerciseResult({
+        exerciseCategory: 'equalizing',
+        difficulty: currentDifficulty,
+        isCorrect: response.isCorrect,
+        userAnswer: exercise.answerType === 'multiple-choice' ? selectedAnswerIndex : userFrequency,
+        correctAnswer: exercise.answerType === 'multiple-choice' ? exercise.correctAnswerIndex : exercise.targetFrequency,
+        accuracy: response.accuracy,
+        exerciseData: {
+          exerciseId: exercise.id,
+          answerType: exercise.answerType,
+          targetFrequency: exercise.targetFrequency,
+          userFrequency: exercise.answerType === 'slider' ? userFrequency : null,
+          selectedAnswerIndex: exercise.answerType === 'multiple-choice' ? selectedAnswerIndex : null,
+          tolerance: exercise.tolerance
+        }
+      });
+
       setShowModal(true);
 
       if (response.isCorrect) {
         setScore(prev => prev + exercise.points);
       }
     } catch (error) {
-      console.error('Error validating answer:', error);
       setModalMessage('Error validating answer. Please try again.');
       setShowModal(true);
     }

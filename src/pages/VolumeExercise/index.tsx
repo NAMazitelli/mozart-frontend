@@ -18,48 +18,44 @@ import {
   IonBackButton,
   IonButtons,
   IonProgressBar,
-  IonBadge,
-  IonRange,
-  IonItem,
   IonSegment,
   IonSegmentButton,
   IonLabel,
+  IonBadge,
+  IonRange,
+  IonItem,
   IonToggle
 } from '@ionic/react';
-import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, headset, swapHorizontal } from 'ionicons/icons';
-import { useParams, useHistory } from 'react-router-dom';
-import { panningService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
-import { getDifficultyFromUrl, logApiCall } from '../utils/exerciseUtils';
-import './PanningExercise.css';
+import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle, musicalNote, swapHorizontal } from 'ionicons/icons';
+import { volumeService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import ExerciseCompletionModal from "../../components/ExerciseCompletionModal";
+import { getDifficultyFromUrl, logApiCall, submitExerciseResult } from '../../utils/exerciseUtils';
+import './VolumeExercise.css';
 
-interface PanningExercise {
+interface VolumeExercise {
   id: string;
   type: string;
   category: string;
   difficulty: string;
   question: string;
-  sound: {
-    type: string;
+  note: {
     frequency: number;
     displayName: string;
-    description: string;
   };
-  correctPanValue: number;
-  correctPanPercentage: number;
-  panDescription: string;
-  points: number;
+  referenceGain: number;
+  secondGain: number;
+  volumeDifference: number;
   tolerance: number;
+  points: number;
   difficultyInfo: string;
+  volumeDescription: string;
 }
 
-const PanningExercise: React.FC = () => {
-  const { difficulty: urlDifficulty } = useParams<{ difficulty: string }>();
-  const history = useHistory();
+const VolumeExercise: React.FC = () => {
   const { isGuest } = useAuth();
-  const [exercise, setExercise] = useState<PanningExercise | null>(null);
-  const [userPanValue, setUserPanValue] = useState<number>(0);
+  const [exercise, setExercise] = useState<VolumeExercise | null>(null);
+  const [userVolumeDifference, setUserVolumeDifference] = useState<number>(0);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -67,17 +63,17 @@ const PanningExercise: React.FC = () => {
   const [modalMessage, setModalMessage] = useState('');
   const [score, setScore] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [accuracy, setAccuracy] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showPanToggle, setShowPanToggle] = useState(false);
-  const [usePanning, setUsePanning] = useState(false);
+  const [showVolumeToggle, setShowVolumeToggle] = useState(false);
+  const [useVolumeDifference, setUseVolumeDifference] = useState(false);
 
   // Audio references for continuous playback
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const gainRef = useRef<GainNode | null>(null);
-  const pannerRef = useRef<StereoPannerNode | null>(null);
 
   // Initialize Audio Context and HTML Audio
   useEffect(() => {
@@ -92,7 +88,7 @@ const PanningExercise: React.FC = () => {
         audioRef.current.crossOrigin = 'anonymous';
 
       } catch (error) {
-        console.error('Error initializing audio context:', error);
+        console.error('Error initializing audio:', error);
       }
     };
 
@@ -109,39 +105,45 @@ const PanningExercise: React.FC = () => {
     };
   }, []);
 
-  // Get difficulty from URL params with fallback extraction for mobile
-  const currentDifficulty = getDifficultyFromUrl(urlDifficulty, 'Panning');
-
   // Load exercise
   useEffect(() => {
     loadNewExercise();
   }, []);
 
-  // Handle panning toggle - enable/disable panning effect
+  // Reload exercise when difficulty changes
   useEffect(() => {
-    if (pannerRef.current && isPlaying) {
-      if (usePanning) {
-        // Apply the exercise's correct panning
-        pannerRef.current.pan.value = exercise?.correctPanValue || 0;
+    if (questionCount > 0) {
+      loadNewExercise();
+    }
+  }, [difficulty]);
+
+  // Handle volume toggle - enable/disable volume difference
+  useEffect(() => {
+    if (gainRef.current && isPlaying && exercise) {
+      const baseVolume = 0.3;
+      if (useVolumeDifference) {
+        // Apply the exercise's volume difference
+        const linearGain = baseVolume * Math.pow(10, exercise.volumeDifference / 20);
+        gainRef.current.gain.setValueAtTime(linearGain, audioContextRef.current!.currentTime);
       } else {
-        // Reset to center (no panning)
-        pannerRef.current.pan.value = 0;
+        // Reset to reference volume (no difference)
+        const linearGain = baseVolume * Math.pow(10, exercise.referenceGain / 20);
+        gainRef.current.gain.setValueAtTime(linearGain, audioContextRef.current!.currentTime);
       }
     }
-  }, [usePanning, exercise?.correctPanValue, isPlaying]);
+  }, [useVolumeDifference, exercise?.volumeDifference, exercise?.referenceGain, isPlaying]);
 
   const loadNewExercise = async () => {
     setLoading(true);
     try {
-      logApiCall('Panning', 'panning', currentDifficulty);
-      const response = await panningService.getPanningExercise(currentDifficulty);
+      const response = await volumeService.getVolumeExercise(difficulty);
       setExercise(response);
-      setUserPanValue(0); // Reset slider to center
+      setUserVolumeDifference(0); // Reset slider to center
       setIsAnswered(false);
       setIsCorrect(false);
       setAccuracy(0);
-      setShowPanToggle(false);
-      setUsePanning(false);
+      setShowVolumeToggle(false);
+      setUseVolumeDifference(false);
       setQuestionCount(prev => prev + 1);
 
       // Setup piano loop audio source
@@ -150,8 +152,7 @@ const PanningExercise: React.FC = () => {
         audioRef.current.src = audioSrc;
       }
     } catch (error) {
-      console.error('Panning - Error loading exercise:', error);
-      logApiCall('Panning', 'panning', currentDifficulty, true);
+      console.error('Error loading exercise:', error);
       setModalMessage('Failed to load exercise. Please try again.');
       setShowModal(true);
     } finally {
@@ -173,24 +174,21 @@ const PanningExercise: React.FC = () => {
         // Create source from audio element
         sourceNodeRef.current = audioContextRef.current.createMediaElementSource(audioRef.current);
 
-        // Create gain and panner nodes
+        // Create gain node
         gainRef.current = audioContextRef.current.createGain();
-        pannerRef.current = audioContextRef.current.createStereoPanner();
 
-        // Configure gain
-        gainRef.current.gain.value = 1.0;
+        // Start with reference volume (no difference)
+        const baseVolume = 1.0;
+        const linearGain = baseVolume * Math.pow(10, exercise.referenceGain / 20);
+        gainRef.current.gain.value = linearGain;
 
-        // Start with no panning (center)
-        pannerRef.current.pan.value = 0;
-
-        // Connect: source -> gain -> panner -> destination
+        // Connect: source -> gain -> destination
         sourceNodeRef.current.connect(gainRef.current);
-        gainRef.current.connect(pannerRef.current);
-        pannerRef.current.connect(audioContextRef.current.destination);
+        gainRef.current.connect(audioContextRef.current.destination);
       }
 
       setIsPlaying(true);
-      setShowPanToggle(true);
+      setShowVolumeToggle(true);
       await audioRef.current.play();
 
       // Auto-stop after 10 seconds for demo
@@ -223,7 +221,7 @@ const PanningExercise: React.FC = () => {
     try {
       // For guest users, calculate validation locally without API call
       if (isGuest) {
-        const difference = Math.abs(userPanValue - exercise.correctPanValue);
+        const difference = Math.abs(userVolumeDifference - exercise.volumeDifference);
         const isCorrect = difference <= exercise.tolerance;
         const accuracy = Math.max(0, (1 - difference / (exercise.tolerance * 2)) * 100);
 
@@ -231,25 +229,42 @@ const PanningExercise: React.FC = () => {
         setAccuracy(accuracy);
 
         if (isCorrect) {
-          setModalMessage(`Correct! The sound was positioned ${exercise.panDescription}.`);
+          setModalMessage(`Correct! The second note was ${exercise.volumeDifference > 0 ? '+' : ''}${exercise.volumeDifference}dB ${exercise.volumeDifference > 0 ? 'louder' : exercise.volumeDifference < 0 ? 'quieter' : 'the same volume'}.`);
           setScore(prev => prev + exercise.points);
         } else {
-          setModalMessage(`Not quite right. The correct position was ${exercise.panDescription}. You guessed ${formatPanValue(userPanValue)}.`);
+          setModalMessage(`Not quite right. The second note was ${exercise.volumeDifference > 0 ? '+' : ''}${exercise.volumeDifference}dB ${exercise.volumeDifference > 0 ? 'louder' : exercise.volumeDifference < 0 ? 'quieter' : 'the same volume'}. You guessed ${userVolumeDifference > 0 ? '+' : ''}${userVolumeDifference}dB.`);
         }
 
         setShowModal(true);
       } else {
         // For logged-in users, use API validation
-        const response = await panningService.validatePanningAnswer({
+        const response = await volumeService.validateVolumeAnswer({
           exerciseId: exercise.id,
-          userAnswer: userPanValue,
-          correctAnswer: exercise.correctPanValue,
+          userAnswer: userVolumeDifference,
+          correctAnswer: exercise.volumeDifference,
           tolerance: exercise.tolerance
         });
 
         setIsCorrect(response.isCorrect);
         setAccuracy(response.accuracy);
         setModalMessage(response.message);
+
+        // Submit exercise to update leaderboard and user stats
+        await submitExerciseResult({
+          exerciseCategory: 'volumes',
+          difficulty: difficulty,
+          isCorrect: response.isCorrect,
+          userAnswer: userVolumeDifference,
+          correctAnswer: exercise.volumeDifference,
+          accuracy: response.accuracy,
+          exerciseData: {
+            exerciseId: exercise.id,
+            userVolumeDifference,
+            correctVolumeDifference: exercise.volumeDifference,
+            tolerance: exercise.tolerance
+          }
+        });
+
         setShowModal(true);
 
         if (response.isCorrect) {
@@ -272,16 +287,15 @@ const PanningExercise: React.FC = () => {
   };
 
   const handleDifficultyChange = (newDifficulty: 'easy' | 'medium' | 'hard') => {
-    // Navigate to new URL with the selected difficulty
-    history.push(`/exercise/panning/${newDifficulty}`);
+    setDifficulty(newDifficulty);
+    setScore(0);
+    setQuestionCount(0);
   };
 
-  const formatPanValue = (value: number) => {
-    const percentage = Math.round(value * 100);
-    if (percentage < -5) return `${Math.abs(percentage)}% L`;
-    if (percentage > 5) return `${percentage}% R`;
-    return 'Center';
+  const formatVolumeValue = (value: number) => {
+    return `${value > 0 ? '+' : ''}${value} dB`;
   };
+
 
   if (loading) {
     return (
@@ -291,7 +305,7 @@ const PanningExercise: React.FC = () => {
             <IonButtons slot="start">
               <IonBackButton defaultHref="/main" />
             </IonButtons>
-            <IonTitle>Panning Exercise</IonTitle>
+            <IonTitle>Volume Exercise</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
@@ -312,7 +326,7 @@ const PanningExercise: React.FC = () => {
             <IonButtons slot="start">
               <IonBackButton defaultHref="/main" />
             </IonButtons>
-            <IonTitle>Panning Exercise</IonTitle>
+            <IonTitle>Volume Exercise</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
@@ -332,7 +346,7 @@ const PanningExercise: React.FC = () => {
           <IonButtons slot="start">
             <IonBackButton defaultHref="/main" />
           </IonButtons>
-          <IonTitle>Panning Exercise</IonTitle>
+          <IonTitle>Volume Exercise</IonTitle>
         </IonToolbar>
       </IonHeader>
 
@@ -342,30 +356,30 @@ const PanningExercise: React.FC = () => {
           <IonCardContent>
             <div className="difficulty-header">
               <h3>Difficulty Level</h3>
-              <IonBadge color={currentDifficulty === 'easy' ? 'success' : currentDifficulty === 'medium' ? 'warning' : 'danger'}>
-                {currentDifficulty.toUpperCase()}
+              <IonBadge color={difficulty === 'easy' ? 'success' : difficulty === 'medium' ? 'warning' : 'danger'}>
+                {difficulty.toUpperCase()}
               </IonBadge>
             </div>
             <IonSegment
-              value={currentDifficulty}
-              onIonChange={(e: CustomEvent) => handleDifficultyChange(e.detail.value as 'easy' | 'medium' | 'hard')}
+              value={difficulty}
+              onIonChange={(e) => handleDifficultyChange(e.detail.value as 'easy' | 'medium' | 'hard')}
             >
               <IonSegmentButton value="easy">
                 <IonLabel>
                   <h3>Easy</h3>
-                  <p>L / C / R</p>
+                  <p>±4 dB</p>
                 </IonLabel>
               </IonSegmentButton>
               <IonSegmentButton value="medium">
                 <IonLabel>
                   <h3>Medium</h3>
-                  <p>5 positions</p>
+                  <p>±2.5 dB</p>
                 </IonLabel>
               </IonSegmentButton>
               <IonSegmentButton value="hard">
                 <IonLabel>
                   <h3>Hard</h3>
-                  <p>Any position</p>
+                  <p>±1.5 dB</p>
                 </IonLabel>
               </IonSegmentButton>
             </IonSegment>
@@ -399,62 +413,54 @@ const PanningExercise: React.FC = () => {
                 {isPlaying ? 'Stop Audio' : 'Play Audio'}
               </IonButton>
 
-              {/* Panning Toggle */}
+              {/* Volume Toggle */}
               <IonItem>
                 <IonIcon icon={swapHorizontal} slot="start" />
-                <IonLabel>Panning Toggle - {usePanning ? 'ON' : 'OFF'}</IonLabel>
+                <IonLabel>Volume Toggle - {useVolumeDifference ? 'ON' : 'OFF'}</IonLabel>
                 <IonToggle
-                  checked={usePanning}
-                  onIonChange={(e) => setUsePanning(e.detail.checked)}
+                  checked={useVolumeDifference}
+                  onIonChange={(e) => setUseVolumeDifference(e.detail.checked)}
                   disabled={!isPlaying}
                   color="primary"
                 />
               </IonItem>
 
-              <p className="audio-hint">
-                <IonIcon icon={headset} /> Use headphones for best results
-              </p>
               <p className="playback-status">
                 <IonIcon icon={volumeHighOutline} />
-                {isPlaying ? (usePanning ? 'Playing with panning applied' : 'Playing original (centered)') : 'Click play to hear the audio'}
+                {isPlaying ? (useVolumeDifference ? 'Playing with volume difference applied' : 'Playing reference volume') : 'Click play to hear the audio'}
               </p>
             </div>
           </IonCardContent>
         </IonCard>
 
-        {/* Panning slider */}
-        <IonCard className="panning-card">
+        {/* Volume difference slider */}
+        <IonCard className="volume-card">
           <IonCardContent>
-            <div className="panning-header">
-              <h3>Adjust the slider to match the sound position:</h3>
-              <IonBadge color="primary" className="pan-display">
-                {formatPanValue(userPanValue)}
+            <div className="volume-header">
+              <h3>Volume difference of second note:</h3>
+              <IonBadge color="primary" className="volume-display">
+                {formatVolumeValue(userVolumeDifference)}
               </IonBadge>
             </div>
 
-            <div className="panning-slider">
+            <div className="volume-slider">
               <div className="slider-labels">
-                <span className="slider-label-left">L</span>
-                <span className="slider-label-right">R</span>
+                <span className="slider-label-left">Quieter</span>
+                <span className="slider-label-center">Same</span>
+                <span className="slider-label-right">Louder</span>
               </div>
               <IonRange
                 pin={true}
-                pinFormatter={(value: number) => formatPanValue(value)}
-                min={-1}
-                max={1}
-                step={0.1}
-                value={userPanValue}
-                onIonChange={e => setUserPanValue(e.detail.value as number)}
+                pinFormatter={(value: number) => formatVolumeValue(value)}
+                min={-20}
+                max={20}
+                step={1}
+                value={userVolumeDifference}
+                onIonChange={e => setUserVolumeDifference(e.detail.value as number)}
                 disabled={isAnswered}
                 color="primary"
                 className="full-width-slider"
               />
-            </div>
-
-            <div className="test-controls">
-              <p className="test-hint">
-                Use the toggle above to compare original vs. panned audio while adjusting the slider
-              </p>
             </div>
           </IonCardContent>
         </IonCard>
@@ -470,6 +476,7 @@ const PanningExercise: React.FC = () => {
           </IonButton>
         )}
 
+        {/* Results */}
 
         {/* Exercise Completion Modal */}
         <ExerciseCompletionModal
@@ -480,16 +487,14 @@ const PanningExercise: React.FC = () => {
           message={modalMessage}
           score={score}
           pointsEarned={exercise?.points}
-          correctAnswer={exercise?.panDescription}
+          correctAnswer={`${exercise?.note?.displayName} (${exercise?.volumeDifference > 0 ? '+' : ''}${exercise?.volumeDifference}dB difference)`}
           showNextButton={isAnswered}
-          userGuess={formatPanValue(userPanValue)}
+          userGuess={formatVolumeValue(userVolumeDifference)}
           accuracy={accuracy}
-          onPlayCorrectAnswer={undefined}
-          isPlaying={false}
         />
       </IonContent>
     </IonPage>
   );
 };
 
-export default PanningExercise;
+export default VolumeExercise;

@@ -22,10 +22,10 @@ import {
 } from '@ionic/react';
 import { playOutline, volumeHighOutline, checkmarkCircle, closeCircle } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
-import { exerciseService } from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
-import { getDifficultyFromUrl, logApiCall } from '../utils/exerciseUtils';
+import { exerciseService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import ExerciseCompletionModal from "../../components/ExerciseCompletionModal";
+import { getDifficultyFromUrl, logApiCall, submitExerciseResult } from '../../utils/exerciseUtils';
 import './GuessNoteExercise.css';
 
 interface GuessNoteExercise {
@@ -97,12 +97,6 @@ const GuessNoteExercise: React.FC = () => {
     try {
       logApiCall('GuessNote', 'guess-note', currentDifficulty);
       const response = await exerciseService.getGuessNoteExercise(currentDifficulty);
-
-      // Debug: Log the frequencies we received
-      console.log('GuessNote - Exercise loaded:', response);
-      console.log('GuessNote - Correct note frequency:', response.correctNote.frequency);
-      console.log('GuessNote - Options:', response.options);
-
       setExercise(response);
       setSelectedAnswer(null);
       setIsAnswered(false);
@@ -186,6 +180,22 @@ const GuessNoteExercise: React.FC = () => {
         setIsCorrect(response.isCorrect);
         setModalMessage(response.message);
         setAccuracy(response.isCorrect ? 100 : 0); // Set accuracy based on correctness
+
+        // Submit exercise to update leaderboard and user stats
+        await submitExerciseResult({
+          exerciseCategory: 'guess-note',
+          difficulty: currentDifficulty,
+          isCorrect: response.isCorrect,
+          userAnswer: answerIndex,
+          correctAnswer: exercise.correctAnswerIndex,
+          accuracy: response.isCorrect ? 100 : 0,
+          exerciseData: {
+            exerciseId: exercise.id,
+            selectedNote: exercise.options[answerIndex]?.displayName,
+            correctNote: exercise.correctNote.displayName
+          }
+        });
+
         setShowModal(true);
 
         if (response.isCorrect) {

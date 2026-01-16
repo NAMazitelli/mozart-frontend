@@ -18,25 +18,20 @@ export const getDifficultyFromUrl = (
 ): Difficulty => {
   // Primary method: useParams hook
   if (urlDifficulty && ['easy', 'medium', 'hard'].includes(urlDifficulty)) {
-    console.log(`${componentName} - Difficulty from useParams:`, urlDifficulty);
     return urlDifficulty as Difficulty;
   }
 
   // Fallback method: extract from window.location.pathname
   const pathname = window.location.pathname;
-  console.log(`${componentName} - Current pathname:`, pathname);
   const pathParts = pathname.split('/');
   const exerciseIndex = pathParts.findIndex(part => part === 'exercise');
 
   if (exerciseIndex !== -1 && pathParts[exerciseIndex + 2]) {
     const fallbackDifficulty = pathParts[exerciseIndex + 2];
     if (['easy', 'medium', 'hard'].includes(fallbackDifficulty)) {
-      console.log(`${componentName} - Difficulty from pathname fallback:`, fallbackDifficulty);
       return fallbackDifficulty as Difficulty;
     }
   }
-
-  console.log(`${componentName} - No difficulty found, defaulting to easy`);
   return 'easy';
 };
 
@@ -55,10 +50,43 @@ export const logApiCall = (
   isError: boolean = false
 ) => {
   const apiPath = `/exercise/${exerciseType}/${difficulty}`;
-  if (isError) {
-    console.error(`${componentName} - Failed API call was to:`, apiPath);
-  } else {
-    console.log(`${componentName} - Loading exercise with difficulty:`, difficulty);
-    console.log(`${componentName} - API call will be made to:`, apiPath);
+};
+
+/**
+ * Submit exercise results to backend for leaderboard tracking
+ * @param exerciseCategory - Category of exercise (guess-note, intervals, etc.)
+ * @param difficulty - Exercise difficulty
+ * @param isCorrect - Whether the answer was correct
+ * @param userAnswer - User's answer
+ * @param correctAnswer - The correct answer
+ * @param accuracy - Accuracy percentage (0-100)
+ * @param exerciseData - Additional exercise data
+ * @returns Promise that resolves when submission is complete
+ */
+export const submitExerciseResult = async (params: {
+  exerciseCategory: string;
+  difficulty: string;
+  isCorrect: boolean;
+  userAnswer: any;
+  correctAnswer: any;
+  accuracy: number;
+  exerciseData: any;
+}): Promise<void> => {
+  try {
+    const { exerciseService } = await import('../services/api');
+    const submitResponse = await exerciseService.submitExercise({
+      exerciseCategory: params.exerciseCategory,
+      difficulty: params.difficulty,
+      isCorrect: params.isCorrect,
+      userAnswer: params.userAnswer,
+      correctAnswer: params.correctAnswer,
+      accuracy: params.accuracy,
+      timeTaken: undefined,
+      exerciseData: params.exerciseData
+    });
+    console.log('Exercise submitted successfully:', submitResponse);
+  } catch (submitError) {
+    console.error('Error submitting exercise:', submitError);
+    // Don't throw error - validation succeeded, this is just for stats
   }
 };

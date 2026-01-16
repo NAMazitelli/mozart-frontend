@@ -23,8 +23,8 @@ import {
   chevronForward,
   analytics
 } from 'ionicons/icons';
-import { useAuth } from '../context/AuthContext';
-import { exerciseApi, Category } from '../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { exerciseApi, Category } from '../../services/api';
 import { useHistory } from 'react-router-dom';
 import './MainMenu.css';
 

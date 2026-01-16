@@ -19,8 +19,9 @@ import {
 } from '@ionic/react';
 import { playOutline, checkmarkCircle, closeCircle, refresh, musicalNote } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
-import { harmoniesService } from '../services/api';
-import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
+import { harmoniesService } from '../../services/api';
+import ExerciseCompletionModal from "../../components/ExerciseCompletionModal";
+import { getDifficultyFromUrl, logApiCall, submitExerciseResult } from '../../utils/exerciseUtils';
 import './HarmoniesExercise.css';
 
 interface PianoNote {
@@ -59,8 +60,8 @@ const HarmoniesExercise: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [validationResponse, setValidationResponse] = useState<any>(null);
 
-  // Use difficulty from URL params, default to 'easy'
-  const currentDifficulty = difficulty || 'easy';
+  // Use difficulty from URL params with fallback extraction for mobile
+  const currentDifficulty = getDifficultyFromUrl(difficulty, 'Harmonies');
 
   // Initialize Audio Context
   useEffect(() => {
@@ -219,6 +220,24 @@ const HarmoniesExercise: React.FC = () => {
       setIsCorrect(response.isCorrect);
       setAccuracy(response.accuracy);
       setModalMessage(response.message);
+
+      // Submit exercise to update leaderboard and user stats
+      await submitExerciseResult({
+        exerciseCategory: 'harmonies',
+        difficulty: currentDifficulty,
+        isCorrect: response.isCorrect,
+        userAnswer: userNotes,
+        correctAnswer: correctNotes,
+        accuracy: response.accuracy,
+        exerciseData: {
+          exerciseId: exercise.id,
+          userNotes,
+          correctNotes,
+          noteCount: exercise.noteCount,
+          correctCount: response.correctCount
+        }
+      });
+
       setShowModal(true);
 
       if (response.isCorrect) {

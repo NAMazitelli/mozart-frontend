@@ -381,52 +381,7 @@ export interface EqualizingExercise {
   correctAnswer?: string;
 }
 
-export interface FiltersExercise {
-  id: string;
-  type: string;
-  category: string;
-  difficulty: string;
-  question: string;
-  sound: {
-    type: string;
-    frequency?: number;
-    filename?: string;
-    displayName: string;
-    description: string;
-  };
-  targetFrequency: number;
-  filterType: string; // lowpass, highpass, bandpass, notch
-  eqGainDb: number;
-  isBoost: boolean;
-  tolerance: number;
-  qFactor: number;
-  points: number;
-  difficultyInfo: string;
-  filterDescription?: string;
-  answerType: 'slider' | 'multiple-choice';
-  options?: Array<{
-    type: string;
-    freq: number;
-    display: string;
-  }>;
-  correctAnswerIndex?: number;
-  correctAnswer?: string;
-}
-
 export interface EqualizingValidationResponse {
-  isCorrect: boolean;
-  message: string;
-  accuracy: number;
-  userFrequency: number;
-  correctFrequency: number;
-  difference: number;
-  tolerance: number;
-  acceptanceRangeMin: number;
-  acceptanceRangeMax: number;
-  explanation: string;
-}
-
-export interface FiltersValidationResponse {
   isCorrect: boolean;
   message: string;
   accuracy: number;
@@ -473,44 +428,6 @@ export const equalizingService = {
     }
 
     const response = await api.post<EqualizingValidationResponse>('/exercise/validate/equalizing', backendData);
-    return response.data;
-  },
-};
-
-export const filtersService = {
-  getFiltersExercise: async (difficulty: string = 'easy'): Promise<FiltersExercise> => {
-    const response = await api.get<FiltersExercise>(`/exercise/filters/${difficulty}`);
-    return response.data;
-  },
-
-  validateFiltersAnswer: async (data: {
-    exerciseId: string;
-    userFrequency?: number;
-    correctFrequency: number;
-    tolerance: number;
-    selectedAnswerIndex?: number;
-    correctAnswerIndex?: number;
-    correctAnswer?: string;
-  }): Promise<FiltersValidationResponse> => {
-    // Map parameters to what the backend expects
-    const backendData: any = {
-      exerciseId: data.exerciseId,
-      correctAnswer: data.correctFrequency,
-      tolerance: data.tolerance
-    };
-
-    // Add appropriate validation data based on answer type
-    if (data.selectedAnswerIndex !== undefined && data.correctAnswerIndex !== undefined) {
-      // Multiple choice validation
-      backendData.selectedAnswerIndex = data.selectedAnswerIndex;
-      backendData.correctAnswerIndex = data.correctAnswerIndex;
-      backendData.correctAnswer = data.correctAnswer;
-    } else if (data.userFrequency !== undefined) {
-      // Slider validation
-      backendData.userAnswer = data.userFrequency;
-    }
-
-    const response = await api.post<FiltersValidationResponse>('/exercise/validate/filters', backendData);
     return response.data;
   },
 };

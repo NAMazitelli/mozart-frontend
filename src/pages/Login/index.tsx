@@ -14,8 +14,8 @@ import {
   IonLabel,
 } from '@ionic/react';
 import { eye, eyeOff, logoGoogle, logoFacebook, logoApple } from 'ionicons/icons';
-import { useAuth } from '../context/AuthContext';
-import { authApi } from '../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { authApi } from '../../services/api';
 import { useHistory } from 'react-router-dom';
 import './Login.css';
 

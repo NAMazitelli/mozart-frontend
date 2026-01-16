@@ -24,10 +24,10 @@ import {
   IonLoading,
 } from '@ionic/react';
 import { logOut } from 'ionicons/icons';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useHistory } from 'react-router-dom';
-import { userApi } from '../services/api';
-import ThemeToggle from '../components/ThemeToggle';
+import { userApi } from '../../services/api';
+import ThemeToggle from "../../components/ThemeToggle";
 
 const Settings: React.FC = () => {
   const { user, logout, isGuest } = useAuth();

@@ -19,9 +19,9 @@ import {
 } from '@ionic/react';
 import { playOutline, checkmarkCircle, closeCircle, refresh, musicalNote } from 'ionicons/icons';
 import { useParams } from 'react-router-dom';
-import { intervalsService } from '../services/api';
-import ExerciseCompletionModal from '../components/ExerciseCompletionModal';
-import { getDifficultyFromUrl, logApiCall } from '../utils/exerciseUtils';
+import { intervalsService } from '../../services/api';
+import ExerciseCompletionModal from "../../components/ExerciseCompletionModal";
+import { getDifficultyFromUrl, logApiCall, submitExerciseResult } from '../../utils/exerciseUtils';
 import './IntervalsExercise.css';
 
 interface PianoNote {
@@ -92,25 +92,6 @@ const IntervalsExercise: React.FC = () => {
     try {
       logApiCall('Intervals', 'intervals', currentDifficulty);
       const response = await intervalsService.getIntervalsExercise(currentDifficulty);
-
-      // Debug: Log the exercise data and frequencies
-      console.log('Intervals - Exercise loaded:', response);
-      console.log('Intervals - Sequence notes:', response.sequence.map(note => ({
-        note: note.displayName,
-        frequency: note.frequency
-      })));
-      console.log('Intervals - Piano notes:', response.pianoNotes.map(note => ({
-        note: note.displayName,
-        frequency: note.frequency,
-        isBlack: note.isBlack
-      })));
-
-      // Debug: Check piano note filtering
-      const whiteKeys = response.pianoNotes.filter(note => !note.isBlack);
-      const blackKeys = response.pianoNotes.filter(note => note.isBlack);
-      console.log('Intervals - White keys:', whiteKeys.map(n => n.displayName));
-      console.log('Intervals - Black keys:', blackKeys.map(n => n.displayName));
-
       setExercise(response);
       setUserSequence([]);
       setIsAnswered(false);
@@ -129,7 +110,6 @@ const IntervalsExercise: React.FC = () => {
   };
 
   const playNote = (frequency: number, duration: number = 0.5): Promise<void> => {
-    console.log('Intervals - Playing note with frequency:', frequency);
 
     return new Promise((resolve) => {
       if (!audioContext) {
@@ -175,11 +155,9 @@ const IntervalsExercise: React.FC = () => {
   const playSequence = async () => {
     if (!exercise || isPlaying) return;
 
-    console.log('Intervals - Playing sequence:', exercise.sequence);
     setIsPlaying(true);
 
     for (let i = 0; i < exercise.sequence.length; i++) {
-      console.log(`Intervals - Playing sequence note ${i + 1}:`, exercise.sequence[i]);
       await playNote(exercise.sequence[i].frequency);
       await new Promise(resolve => setTimeout(resolve, 500)); // 0.5 second pause between notes
     }
@@ -189,8 +167,6 @@ const IntervalsExercise: React.FC = () => {
 
   const handlePianoKeyPress = async (note: PianoNote) => {
     if (isAnswered || userSequence.length >= (exercise?.noteCount || 0)) return;
-
-    console.log('Intervals - Piano key pressed:', note);
 
     // Play the note
     await playNote(note.frequency, 0.3);
@@ -222,13 +198,29 @@ const IntervalsExercise: React.FC = () => {
       setIsCorrect(response.isCorrect);
       setAccuracy(response.accuracy);
       setModalMessage(response.message);
+
+      // Submit exercise to update leaderboard and user stats
+      await submitExerciseResult({
+        exerciseCategory: 'intervals',
+        difficulty: currentDifficulty,
+        isCorrect: response.isCorrect,
+        userAnswer: userSequence,
+        correctAnswer: correctSequence,
+        accuracy: response.accuracy,
+        exerciseData: {
+          exerciseId: exercise.id,
+          userSequence,
+          correctSequence,
+          noteCount: exercise.noteCount
+        }
+      });
+
       setShowModal(true);
 
       if (response.isCorrect) {
         setScore(prev => prev + exercise.points);
       }
     } catch (error) {
-      console.error('Error validating answer:', error);
       setModalMessage('Error validating answer. Please try again.');
       setShowModal(true);
     }

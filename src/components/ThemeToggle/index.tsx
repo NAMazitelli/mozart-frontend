@@ -1,7 +1,7 @@
 import React from 'react';
 import { IonItem, IonLabel, IonIcon, IonToggle } from '@ionic/react';
 import { sunny, moon } from 'ionicons/icons';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import './ThemeToggle.css';
 
 interface ThemeToggleProps {
